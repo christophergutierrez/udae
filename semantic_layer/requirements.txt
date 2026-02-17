@@ -1,0 +1,7 @@
+# Core dependencies
+httpx>=0.27.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Shared with semantic_inference (installed separately)
+# The semantic_layer package imports from semantic_inference

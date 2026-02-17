@@ -1,0 +1,361 @@
+# UDAE - Universal Database Answer Engine
+
+Complete deployment package for setting up UDAE from scratch.
+
+## 📚 Documentation
+
+All documentation is in the **[docs/](./docs/)** folder:
+
+### **Essential Reading** (Start Here)
+
+**🤖 Using an AI Assistant?** (Claude Code, Cursor, Goose, etc.)
+
+1. **[AI_INSTALL.md](./docs/AI_INSTALL.md)** - AI-optimized setup guide
+   - Linear execution path with verification steps
+   - Error codes mapped to exact fixes
+   - Copy to your AI and say: "Read docs/AI_INSTALL.md and set up UDAE"
+   - 20-30 minute autonomous setup
+
+**👤 Manual Setup?**
+
+1. **[QUICKSTART.md](./docs/QUICKSTART.md)** - 30-minute fast setup
+   - Automated installation
+   - Step-by-step with sample data
+   - Perfect for first-time users
+
+2. **[SETUP_GUIDE_COMPLETE.md](./docs/SETUP_GUIDE_COMPLETE.md)** - Comprehensive guide
+   - Architecture overview
+   - Detailed configuration
+   - Production deployment options
+
+**📖 Reference Documentation**
+
+3. **[LLM_PROVIDER_CONFIG.md](./docs/LLM_PROVIDER_CONFIG.md)** - LLM configuration
+   - Works with any OpenAI-compatible provider
+   - 8 provider examples
+   - Cost optimization strategies
+
+4. **[TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)** - Common issues & solutions
+   - Apple Silicon fixes
+   - OpenMetadata 1.11.8 specifics
+   - Step-by-step debugging
+
+### Additional Documentation
+
+- **[PROJECT_STATUS.md](./docs/PROJECT_STATUS.md)** - Setup progress tracker
+- **[PROJECT_SETUP_SUMMARY.md](./docs/PROJECT_SETUP_SUMMARY.md)** - Complete overview
+- **[DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md)** - Pagila schema reference
+- **[DOCUMENTATION_SUMMARY.md](./docs/DOCUMENTATION_SUMMARY.md)** - Doc package summary
+- **[DOCUMENTATION_UPDATES.md](./docs/DOCUMENTATION_UPDATES.md)** - Recent changes
+
+### 📦 What's Included
+
+```
+udae-project/
+├── README.md                    # This file
+├── .env.example                 # Environment template
+├── .gitignore                   # Git ignore rules
+├── docker-compose.yml           # Pagila + Cube.js stack
+├── requirements.txt             # Python dependencies
+│
+├── docs/                        # 📚 All documentation
+│   ├── AI_INSTALL.md            # AI-optimized setup
+│   ├── QUICKSTART.md            # 30-min setup guide
+│   ├── SETUP_GUIDE_COMPLETE.md  # Comprehensive guide
+│   ├── LLM_PROVIDER_CONFIG.md   # LLM configuration
+│   ├── TROUBLESHOOTING.md       # Common issues
+│   ├── PROJECT_STATUS.md        # Setup tracker
+│   └── ...                      # Additional docs
+│
+├── scripts/                     # Automation scripts
+│   ├── setup.sh                 # Automated setup
+│   ├── cleanup.sh               # Clean everything
+│   ├── test_stack.sh            # Verify deployment
+│   ├── setup_openmetadata.py    # OM service setup
+│   └── ...                      # Additional scripts
+│
+├── semantic_inference/          # LLM-powered descriptions
+├── semantic_layer/              # Cube.js schema generator
+├── text_to_query/               # Natural language UI
+├── schemas/                     # Generated Cube.js schemas
+├── config/                      # Configuration files
+└── logs/                        # Application logs
+```
+
+## 🚀 Quick Start
+
+### AI-Assisted Setup (Fastest)
+
+**Using Claude Code, Cursor, Goose, or similar?**
+
+```bash
+# Open your AI assistant and say:
+"Read docs/AI_INSTALL.md and set up UDAE from scratch"
+```
+
+**Time**: 20-30 minutes (autonomous)
+**See**: [docs/AI_INSTALL.md](./docs/AI_INSTALL.md)
+
+### Automated Setup (Recommended for manual)
+
+```bash
+# Navigate to your UDAE project directory
+cd /path/to/udae-project
+
+# Run automated setup
+./scripts/setup.sh
+
+# Access services
+#   OpenMetadata: http://localhost:8585
+#   Cube.js:      http://localhost:4000
+#   Text-to-Query: http://localhost:5001
+```
+
+**Time**: 30-45 minutes
+**Requirements**: Docker, Python 3.9+, LLM API key
+**See**: [docs/QUICKSTART.md](./docs/QUICKSTART.md) for full instructions
+
+### Manual Setup
+
+See [docs/SETUP_GUIDE_COMPLETE.md](./docs/SETUP_GUIDE_COMPLETE.md) for step-by-step manual setup.
+
+## 🎯 Key Features
+
+### 1. **Philosophy: OpenMetadata as Source of Truth**
+
+```
+OpenMetadata (Human-Editable)
+      ↓
+   [Generate]
+      ↓
+Cube.js → Text-to-Query → AI Agents
+```
+
+Data meaning defined once in OpenMetadata, propagates everywhere.
+
+### 2. **Auto-Healing Natural Language Queries**
+
+```bash
+# Try: "How many customers per state?"
+# System automatically:
+#  - Validates query against schema
+#  - Adds missing measures (count, etc.)
+#  - Suggests alternatives for invalid joins
+#  - Returns results with explanation
+```
+
+### 3. **Generic LLM Provider Support**
+
+Works with ANY OpenAI-compatible API:
+- Anthropic Claude ✓
+- OpenAI GPT-4 ✓
+- Azure OpenAI ✓
+- Self-hosted (Ollama, vLLM) ✓
+- Enterprise proxies ✓
+
+### 4. **Automated Profiler Configuration**
+
+No manual UI clicks - configure profiler via API/code:
+
+```python
+python scripts/configure_profiler.py \
+  --service pagila \
+  --schedule hourly \
+  --sample 100
+```
+
+## 📊 Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    USER INTERFACES                       │
+│  Natural Language UI  │  Cube.js Playground  │  MCP API │
+└───────────┬─────────────────────┬───────────────────────┘
+            │                     │
+┌───────────▼─────────┐  ┌───────▼──────────┐
+│   Text-to-Query     │  │    Cube.js       │
+│   (Port 5001)       │  │   (Port 4000)    │
+│  - Schema Validator │  │  - Semantic      │
+│  - Auto-Healer      │  │    Serving Layer │
+│  - Query Generator  │  │  - Generated     │
+└───────────┬─────────┘  │    from OM       │
+            │            └─────────┬─────────┘
+            │                      │
+┌───────────▼──────────────────────▼─────────┐
+│          OpenMetadata (Port 8585)          │
+│        Single Source of Semantic Truth      │
+│  - Human-Editable Metadata                  │
+│  - Data Catalog                             │
+│  - Lineage                                  │
+└────────────────┬────────────────────────────┘
+                 │
+┌────────────────▼────────────────┐
+│  Your Databases (Postgres, etc) │
+│  - Pagila Sample (Port 5433)    │
+│  - Production DBs               │
+└─────────────────────────────────┘
+```
+
+## 🔄 Data Flow
+
+```
+1. SETUP
+   Install OM → Add DB → Configure Profiler
+
+2. DISCOVERY & ENRICHMENT
+   Profiler → Statistics
+   LLM → Descriptions
+   → Write to OpenMetadata
+
+3. HUMAN REVIEW
+   Review/correct in OM UI
+   → OpenMetadata = Source of Truth
+
+4. GENERATION
+   OM → Generate Cube.js schemas
+   Cube.js → Serve queries
+
+5. NATURAL LANGUAGE
+   User question → Text-to-Query
+   → Validate against schema
+   → Generate Cube.js query
+   → Execute → Return results
+```
+
+## 🛠️ Components
+
+| Component | Purpose | Port | Required |
+|-----------|---------|------|----------|
+| **OpenMetadata** | Data catalog, source of truth | 8585 | ✅ Yes |
+| **OM Postgres** | OpenMetadata's metadata storage | 5432 | ✅ Yes |
+| **OM Ingestion** | Profiler, connectors | 8080 | ✅ Yes |
+| **Your Database** | Source data (Pagila in demo) | 5433 | ✅ Yes |
+| **Cube.js** | Semantic serving layer | 4000 | ✅ Yes |
+| **Text-to-Query** | Natural language interface | 5001 | Optional |
+
+## 🎓 Learning Path
+
+### Day 1: Understand the System
+1. Read [SETUP_GUIDE_COMPLETE.md](./SETUP_GUIDE_COMPLETE.md) - Architecture section
+2. Understand the philosophy: OM as source of truth
+3. Review the data flow diagram
+
+### Day 2: Deploy Locally
+1. Run `./scripts/setup.sh`
+2. Access OpenMetadata UI (http://localhost:8585)
+3. Explore Pagila sample data
+4. Run profiler, see statistics
+
+### Day 3: Generate Semantic Layer
+1. Configure LLM provider ([LLM_PROVIDER_CONFIG.md](./LLM_PROVIDER_CONFIG.md))
+2. Run semantic inference (add descriptions)
+3. Review/correct descriptions in OM UI
+4. Generate Cube.js schemas
+5. Test queries in Cube.js Playground
+
+### Day 4: Natural Language Queries
+1. Start text-to-query service
+2. Try natural language questions
+3. See auto-healing in action
+4. Understand schema validation
+
+### Day 5: Production Planning
+1. Review [KUBERNETES_DEPLOYMENT.md](./KUBERNETES_DEPLOYMENT.md)
+2. Plan infrastructure (K8s, storage, networking)
+3. Configure monitoring/alerting
+4. Set up CI/CD pipelines
+
+## 📋 Prerequisites
+
+### Required
+- **Docker** 20.10+ with **Docker Compose** 2.x
+- **Python** 3.9+
+- **8GB RAM** minimum (16GB recommended)
+- **20GB disk** space
+
+### Optional (for production)
+- **Kubernetes** 1.24+
+- **Persistent storage** (NFS, EBS, etc.)
+- **Load balancer** (nginx, HAProxy, cloud LB)
+
+### API Keys
+- LLM provider API key (Anthropic, OpenAI, etc.)
+- Or access to enterprise proxy
+
+## 🧪 Verification
+
+After setup, verify all components:
+
+```bash
+# Run test suite
+./scripts/test_stack.sh
+
+# Should output:
+# ✅ OpenMetadata is healthy
+# ✅ Postgres databases are accessible
+# ✅ Cube.js is serving queries
+# ✅ Text-to-Query is running
+# ✅ Profiler is configured
+# ✅ LLM provider is reachable
+```
+
+## 🆘 Getting Help
+
+### Common Issues
+
+See [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for:
+- Docker connection issues
+- OpenMetadata startup problems
+- LLM provider errors
+- Cube.js schema problems
+- Query validation issues
+
+### Documentation
+
+- **AI Setup**: [docs/AI_INSTALL.md](./docs/AI_INSTALL.md)
+- **Quick Start**: [docs/QUICKSTART.md](./docs/QUICKSTART.md)
+- **Complete Setup**: [docs/SETUP_GUIDE_COMPLETE.md](./docs/SETUP_GUIDE_COMPLETE.md)
+- **LLM Config**: [docs/LLM_PROVIDER_CONFIG.md](./docs/LLM_PROVIDER_CONFIG.md)
+- **Troubleshoot**: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
+
+### Support Channels
+
+- GitHub Issues: [Link to your repo]
+- Internal Slack: #udae-support
+- Email: udae-team@company.com
+
+## 🎉 What You Get
+
+After completing setup:
+
+✅ **Self-Describing Data**: Your database explains itself
+✅ **Natural Language Queries**: Ask questions in English
+✅ **Auto-Healing**: System fixes missing metadata automatically
+✅ **Schema Validation**: Prevents invalid queries before execution
+✅ **Human-Editable**: Business users can correct metadata in UI
+✅ **AI-Ready**: MCP endpoint for AI agents
+✅ **Production-Ready**: K8s deployment, monitoring, scaling
+
+## 🚦 Next Steps
+
+1. **Using AI Assistant?** → Give it [AI_INSTALL.md](./docs/AI_INSTALL.md)
+2. **New User?** → Start with [QUICKSTART.md](./docs/QUICKSTART.md) or [SETUP_GUIDE_COMPLETE.md](./docs/SETUP_GUIDE_COMPLETE.md)
+3. **Need LLM Config?** → See [LLM_PROVIDER_CONFIG.md](./docs/LLM_PROVIDER_CONFIG.md)
+4. **Going to Production?** → Read [KUBERNETES_DEPLOYMENT.md](./docs/KUBERNETES_DEPLOYMENT.md)
+5. **Having Issues?** → Check [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
+
+## 📝 License
+
+Internal use only.
+
+## 🤝 Contributing
+
+See CONTRIBUTING.md for guidelines on:
+- Adding new LLM providers
+- Extending schema validation
+- Adding auto-healing rules
+- Improving documentation
+
+---
+
+**Welcome to UDAE - Where your data explains itself!** 🎯

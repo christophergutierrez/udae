@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Query Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: #f9fafb;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+
+        .query-display {
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .query-display pre {
+            margin: 0;
+            color: #cbd5e1;
+        }
+
+        .results-table {
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .result-count {
+            color: #6b7280;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .healing-message {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .healing-message strong {
+            color: #0c4a6e;
+        }
+
+        .success-healing-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .healing-failed-message {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .input-container {
+            border-top: 1px solid #e5e7eb;
+            padding: 20px 30px;
+            background: white;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #questionInput {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #questionInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendButton {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .examples {
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            margin: 10px 0;
+        }
+
+        .examples h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        .examples h4 {
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .examples h4:first-of-type {
+            margin-top: 10px;
+        }
+
+        .example-question {
+            background: white;
+            border: 1px solid #e5e7eb;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .example-question:hover {
+            background: #f3f4f6;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .welcome-message h2 {
+            color: #374151;
+            margin-bottom: 15px;
+        }
+
+        .welcome-message p {
+            color: #6b7280;
+            font-size: 15px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Text-to-Query Interface</h1>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span id="statusText">Connected</span>
+            </div>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message">
+                <h2>Ask me anything about your data!</h2>
+                <p>I'll convert your questions into queries and show you the results.</p>
+
+                <div class="examples">
+                    <h3>Try these examples:</h3>
+
+                    <h4>✅ Working Examples</h4>
+                    <div class="example-question" onclick="askQuestion('What are the top 10 longest films?')">
+                        What are the top 10 longest films?
+                    </div>
+                    <div class="example-question" onclick="askQuestion('List all R-rated films released after 2000')">
+                        List all R-rated films released after 2000
+                    </div>
+                    <div class="example-question" onclick="askQuestion('Show me actors and their films')">
+                        Show me actors and their films
+                    </div>
+
+                    <h4>🔧 Broken but Can Fix</h4>
+                    <div class="example-question" onclick="askQuestion('What countries have the most customers?')">
+                        What countries have the most customers?
+                    </div>
+
+                    <h4>❌ Broken and Can't Fix</h4>
+                    <div class="example-question" onclick="askQuestion('What countries have the most actors?')">
+                        What countries have the most actors?
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    id="questionInput"
+                    placeholder="Ask a question about your data..."
+                    onkeypress="handleKeyPress(event)"
+                />
+            </div>
+            <button id="sendButton" onclick="sendQuestion()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let isProcessing = false;
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                if (data.status === 'healthy') {
+                    document.getElementById('statusText').textContent = 'Connected';
+                } else {
+                    document.getElementById('statusText').textContent = 'Configuration Issues';
+                    console.warn('Health check issues:', data.issues);
+                }
+            } catch (error) {
+                document.getElementById('statusText').textContent = 'Disconnected';
+                console.error('Health check failed:', error);
+            }
+        }
+
+        function addMessage(content, isUser = false) {
+            const container = document.getElementById('chatContainer');
+
+            // Remove welcome message if present
+            const welcome = container.querySelector('.welcome-message');
+            if (welcome) {
+                welcome.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = content;
+
+            messageDiv.appendChild(contentDiv);
+            container.appendChild(messageDiv);
+
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addLoadingMessage() {
+            const content = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>Generating query...</span>
+                </div>
+            `;
+            addMessage(content, false);
+        }
+
+        function removeLastMessage() {
+            const container = document.getElementById('chatContainer');
+            const messages = container.querySelectorAll('.message');
+            if (messages.length > 0) {
+                messages[messages.length - 1].remove();
+            }
+        }
+
+        function formatResults(data, count) {
+            if (!data || data.length === 0) {
+                return '<div class="result-count">No results found</div>';
+            }
+
+            const columns = Object.keys(data[0]);
+
+            let html = `<div class="result-count">Found ${count} result${count !== 1 ? 's' : ''}</div>`;
+            html += '<div class="results-table"><table>';
+
+            // Header
+            html += '<thead><tr>';
+            columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead>';
+
+            // Rows (limit to first 50)
+            html += '<tbody>';
+            data.slice(0, 50).forEach(row => {
+                html += '<tr>';
+                columns.forEach(col => {
+                    html += `<td>${row[col] !== null ? row[col] : '<em>null</em>'}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+
+            if (count > 50) {
+                html += `<div class="result-count">Showing first 50 of ${count} results</div>`;
+            }
+
+            return html;
+        }
+
+        async function sendQuestion() {
+            if (isProcessing) return;
+
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+
+            if (!question) return;
+
+            // Clear input
+            input.value = '';
+
+            await askQuestion(question);
+        }
+
+        async function askQuestion(question) {
+            isProcessing = true;
+            document.getElementById('sendButton').disabled = true;
+
+            // Add user message
+            addMessage(question, true);
+
+            // Add loading message
+            addLoadingMessage();
+
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        execute: true
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove loading message
+                removeLastMessage();
+
+                if (data.success) {
+                    let content = '';
+
+                    // Show fix success message if query was auto-fixed
+                    if (data.auto_fixed && data.fix_explanation) {
+                        content += `<div class="success-healing-message"><strong>✨ Auto-Fixed!</strong><br>${data.fix_explanation}</div>`;
+                    }
+
+                    content += '<strong>Generated Query:</strong>';
+                    content += `<div class="query-display"><pre>${JSON.stringify(data.query, null, 2)}</pre></div>`;
+
+                    if (data.results) {
+                        content += '<strong>Results:</strong>';
+                        content += formatResults(data.results, data.count);
+                    }
+
+                    if (data.sql) {
+                        content += '<details style="margin-top: 10px; font-size: 13px;"><summary style="cursor: pointer; color: #6b7280;">Show SQL</summary>';
+                        content += `<div class="query-display"><pre>${data.sql[0] || data.sql}</pre></div></details>`;
+                    }
+
+                    addMessage(content, false);
+                } else {
+                    console.log('Query failed, data:', data);
+                    let errorContent = `<div class="error-message"><strong>Error:</strong> ${data.error}</div>`;
+
+                    // Add fix explanation if fix was attempted
+                    if (data.fix_attempted && data.fix_explanation) {
+                        console.log('Fix attempted:', data.fix_explanation);
+                        errorContent += `<div class="healing-message"><strong>🔧 Fix Attempted</strong><br>${data.fix_explanation}</div>`;
+                    }
+
+                    // Add suggestion if provided (for errors that can't be fixed)
+                    if (data.suggestion) {
+                        errorContent += `<div class="healing-failed-message"><strong>💡 Suggestion</strong><br>${data.suggestion.replace(/\n/g, '<br>')}</div>`;
+                    }
+
+                    addMessage(errorContent, false);
+                }
+            } catch (error) {
+                removeLastMessage();
+                const errorContent = `<div class="error-message"><strong>Error:</strong> ${error.message}</div>`;
+                addMessage(errorContent, false);
+            } finally {
+                isProcessing = false;
+                document.getElementById('sendButton').disabled = false;
+                document.getElementById('questionInput').focus();
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendQuestion();
+            }
+        }
+
+        // Initialize
+        checkHealth();
+        setInterval(checkHealth, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>

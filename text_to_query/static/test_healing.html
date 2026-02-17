@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Healing Messages</title>
+    <style>
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px;
+            font-size: 14px;
+        }
+
+        .healing-failed-message {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Healing Messages Display</h1>
+
+    <h2>Error Message (should be red):</h2>
+    <div class="error-message">
+        <strong>Error:</strong> Cube.js API error: 'amount' not found for path 'Payment.amount'
+    </div>
+
+    <h2>Healing Failed Message (should be yellow):</h2>
+    <div class="healing-failed-message">
+        <strong>⚠️ Cannot Auto-Fix</strong><br>
+        ❌ Cannot auto-fix: 'amount' is missing from Payment cube. This measure requires domain knowledge (which column? what aggregation type?) and must be added manually to the schema.
+    </div>
+
+    <h2>Test API Response:</h2>
+    <button onclick="testQuery()">Click to Test Query</button>
+    <div id="result"></div>
+
+    <script>
+        async function testQuery() {
+            const response = await fetch('/api/query', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    question: "What's our total revenue?",
+                    execute: true
+                })
+            });
+            const data = await response.json();
+
+            let html = '<h3>API Response:</h3>';
+            html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+
+            html += '<h3>Rendered Messages:</h3>';
+            html += `<div class="error-message"><strong>Error:</strong> ${data.error}</div>`;
+
+            if (data.healing_failed && data.healing_explanation) {
+                html += `<div class="healing-failed-message"><strong>⚠️ Cannot Auto-Fix</strong><br>${data.healing_explanation}</div>`;
+            } else {
+                html += '<p style="color: red;">❌ healing_failed or healing_explanation is missing!</p>';
+            }
+
+            document.getElementById('result').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

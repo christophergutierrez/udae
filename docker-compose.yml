@@ -1,0 +1,72 @@
+version: '3.8'
+
+# UDAE Docker Compose Configuration
+# This file sets up the complete UDAE stack for local development
+
+services:
+  # Pagila Sample Database
+  pagila_postgres:
+    image: postgres:16
+    container_name: pagila_postgres
+    environment:
+      POSTGRES_DB: pagila
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pagila
+    ports:
+      - "5433:5432"
+    volumes:
+      - pagila-data:/var/lib/postgresql/data
+      - ./data/pagila-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./data/pagila-data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cube.js Semantic Serving Layer
+  cube:
+    image: cubejs/cube:latest
+    container_name: cube_server
+    ports:
+      - "4000:4000"
+    environment:
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: pagila_postgres
+      CUBEJS_DB_PORT: 5432
+      CUBEJS_DB_NAME: pagila
+      CUBEJS_DB_USER: postgres
+      CUBEJS_DB_PASS: pagila
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: mysecretkey123
+      CUBEJS_WEB_SOCKETS: "true"
+    volumes:
+      - ./schemas:/cube/conf/model
+    depends_on:
+      pagila_postgres:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app_net:
+    external: true
+    name: udae-project_app_net
+
+volumes:
+  pagila-data:
+
+# To use with OpenMetadata, also run:
+# curl -sL https://github.com/open-metadata/OpenMetadata/releases/latest/download/docker-compose.yml -o om-compose.yml
+# docker compose -f om-compose.yml up -d
