@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "udae": {
+      "type": "stdio",
+      "command": "/home/chris/git_home/udae/venv/bin/python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/home/chris/git_home/udae"
+    }
+  }
+}

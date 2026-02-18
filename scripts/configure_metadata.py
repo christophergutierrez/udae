@@ -2,6 +2,10 @@
 """
 Configure OpenMetadata Metadata Ingestion (not profiler)
 This must run BEFORE the profiler
+
+NOTE: For initial setup, prefer scripts/setup_openmetadata.py which handles
+Airflow DB init, deploy, and triggers via Airflow API (more reliable in OM 1.11.x).
+This script is kept for re-running ingestion on an already-configured system.
 """
 
 import os
@@ -117,7 +121,12 @@ def create_metadata_ingestion(service_id):
         sys.exit(1)
 
 def trigger_pipeline(pipeline_id):
-    """Trigger the pipeline to run"""
+    """Trigger the pipeline to run.
+
+    Note: In OM 1.11.x the /trigger endpoint returns 400 even on success.
+    If this fails, trigger manually via Airflow UI at http://localhost:8080
+    (login: admin/admin, find DAG: pagila_metadata).
+    """
     print("🚀 Triggering pipeline run...")
 
     url = f"{OM_URL}/v1/services/ingestionPipelines/trigger/{pipeline_id}"
@@ -128,7 +137,9 @@ def trigger_pipeline(pipeline_id):
         print("   This will take 1-2 minutes...")
         return True
     else:
-        print(f"⚠️  Failed to trigger pipeline: {response.status_code}")
+        print(f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)")
+        print("   The pipeline may still run. Check Airflow at http://localhost:8080")
+        print("   Login: admin/admin → DAG: pagila_metadata → trigger manually if needed")
         return False
 
 def main():

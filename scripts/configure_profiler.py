@@ -120,7 +120,11 @@ def create_profiler(service_id):
         sys.exit(1)
 
 def trigger_profiler(pipeline_id):
-    """Trigger the profiler to run"""
+    """Trigger the profiler to run.
+
+    Note: In OM 1.11.x the /trigger endpoint may return 400 even on success.
+    If this fails, trigger via Airflow at http://localhost:8080 (admin/admin).
+    """
     print("🚀 Triggering profiler run...")
 
     url = f"{OM_URL}/v1/services/ingestionPipelines/trigger/{pipeline_id}"
@@ -132,8 +136,9 @@ def trigger_profiler(pipeline_id):
         print("   Services → pagila → Ingestion → View Logs")
         return True
     else:
-        print(f"⚠️  Failed to trigger profiler: {response.status_code}")
-        print(f"   You can trigger it manually from the UI")
+        print(f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)")
+        print("   Trigger manually via Airflow UI at http://localhost:8080")
+        print("   Login: admin/admin → find DAG: pagila_profiler → trigger")
         return False
 
 def main():

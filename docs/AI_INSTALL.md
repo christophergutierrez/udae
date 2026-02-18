@@ -16,6 +16,7 @@ Universal Database Answer Engine - turns databases into self-describing systems 
 - Pagila sample database (Postgres) → Port 5433
 - Cube.js (semantic serving layer) → Port 4000
 - Text-to-Query (natural language interface) → Port 5001
+- MCP Server (AI agent interface) → stdio (Claude Code) or Port 5002 (SSE/Docker)
 
 **Philosophy**: OpenMetadata is the single source of truth. Descriptions written there → auto-generate Cube.js schemas → enable natural language queries.
 
@@ -237,39 +238,55 @@ docker exec pagila_postgres psql -U postgres -d pagila -c "SELECT COUNT(*) FROM 
 
 ### Step 5.1: Retrieve ingestion-bot token from database
 
+**Note on OM 1.11.x**: The token is stored in the `bot_entity` table (not `user_entity`), and the Fernet key is in the container's environment (not in the YAML config file which only has a reference variable).
+
 ```bash
 cd /path/to/udae-project
 source venv/bin/activate
+pip install cryptography -q
 
-# Get encrypted token from MySQL
-ENCRYPTED_TOKEN=$(docker exec openmetadata_mysql mysql -u openmetadata_user -popenmetadata_password openmetadata_db \
-  -e "SELECT json FROM user_entity WHERE name='ingestion-bot';" 2>/dev/null | \
-  tail -1 | python3 -c "import sys, json; data=json.loads(sys.stdin.read().split('\t', 1)[1]); print(data['authenticationMechanism']['config']['JWTToken'].replace('fernet:', ''))" 2>/dev/null)
+python3 << 'EOF'
+import subprocess, json
 
-# Get Fernet key from OpenMetadata config
-FERNET_KEY=$(docker exec openmetadata_server cat /opt/openmetadata/conf/openmetadata.yaml 2>/dev/null | \
-  grep "fernetKey:" | cut -d':' -f2 | tr -d ' ')
+# Get encrypted token from MySQL bot_entity table
+result = subprocess.run(
+    ["docker", "exec", "openmetadata_mysql",
+     "mysql", "-u", "openmetadata_user", "-popenmetadata_password",
+     "openmetadata_db", "-sNe",
+     "SELECT token FROM bot_entity WHERE name='ingestion-bot' LIMIT 1;"],
+    capture_output=True, text=True
+)
+encrypted_token = result.stdout.strip()
+if not encrypted_token or not encrypted_token.startswith('fernet:'):
+    print("❌ Could not find encrypted token. Is OpenMetadata running?")
+    exit(1)
+encrypted_payload = encrypted_token.replace('fernet:', '')
 
-# Decrypt token using Python
-python3 << EOF
+# Get Fernet key from container environment (not the YAML file)
+result = subprocess.run(
+    ["docker", "exec", "openmetadata_server", "env"],
+    capture_output=True, text=True
+)
+fernet_key = None
+for line in result.stdout.splitlines():
+    if line.startswith('FERNET_KEY='):
+        fernet_key = line.split('=', 1)[1]
+        break
+if not fernet_key:
+    print("❌ Could not find FERNET_KEY in container environment.")
+    exit(1)
+
+# Decrypt
 from cryptography.fernet import Fernet
+token = Fernet(fernet_key.encode()).decrypt(encrypted_payload.encode()).decode()
 
-fernet_key = b"$FERNET_KEY"
-f = Fernet(fernet_key)
-
-encrypted = "$ENCRYPTED_TOKEN"
-decrypted = f.decrypt(encrypted.encode())
-token = decrypted.decode()
-
-# Update .env file
-with open('.env', 'r') as file:
-    lines = file.readlines()
-
-with open('.env', 'w') as file:
+# Save to .env
+lines = open('.env').readlines()
+with open('.env', 'w') as f:
     for line in lines:
         if not line.startswith('OM_TOKEN='):
-            file.write(line)
-    file.write(f'OM_TOKEN={token}\n')
+            f.write(line)
+    f.write(f'OM_TOKEN={token}\n')
 
 print(f"✅ Token retrieved and saved to .env")
 print(f"Token preview: {token[:20]}...")
@@ -277,11 +294,10 @@ EOF
 ```
 
 **What this does**:
-1. Queries OpenMetadata's MySQL database for ingestion-bot user
-2. Extracts encrypted JWT token from JSON data
-3. Gets Fernet encryption key from OpenMetadata config
-4. Decrypts token using cryptography library
-5. Saves decrypted token to .env file
+1. Queries `bot_entity` table in MySQL for the ingestion-bot token
+2. Gets Fernet encryption key from the container's environment variables
+3. Decrypts token using cryptography library
+4. Saves decrypted token to .env file
 
 **Install cryptography if needed**:
 ```bash
@@ -304,140 +320,81 @@ echo "Token starts with: ${OM_TOKEN:0:20}..."
 
 **IMPORTANT**: This creates the Pagila service and triggers metadata discovery entirely via API.
 
-### Step 6.1: Create Pagila database service via API
+### Step 6.1: Run setup script
 
 ```bash
 cd /path/to/udae-project
 source venv/bin/activate
 source .env
 
-# Run the setup script (uses API internally)
 python3 scripts/setup_openmetadata.py
 ```
 
-**What this does**:
-1. Creates Pagila PostgreSQL service in OpenMetadata
-2. Creates metadata ingestion pipeline
-3. Deploys pipeline to Airflow
-4. Triggers initial metadata discovery
+**What this does** (all automated):
+1. Initializes Airflow DB (`airflow db migrate`) — required before any pipeline can run
+2. Creates Pagila PostgreSQL service using `pagila_postgres:5432` (Docker internal hostname)
+3. Creates metadata ingestion pipeline
+4. Deploys pipeline to Airflow
+5. Triggers DAG run via Airflow REST API (more reliable than OM trigger endpoint in 1.11.x)
+6. Polls until complete, then verifies table count
 
 **Expected output**:
 ```
+🔧 Complete OpenMetadata Setup for Pagila
+============================================================
+🔧 Initializing Airflow DB...
+✅ Airflow DB initialized
 📝 Creating Pagila database service...
-✅ Created service: 8dd43da0-...
+✅ Created service: 9b928caa-...
 📝 Creating metadata ingestion pipeline...
-✅ Created metadata pipeline: 684c5f29-...
-🚀 Deploying and triggering ingestion...
-✅ Pipeline deployed and running
+✅ Created metadata pipeline: 56361c1e-...
+📦 Deploying pipeline to Airflow...
+✅ Pipeline deployed: {"message": "Workflow [pagila_metadata] has been created"}
+🚀 Triggering metadata ingestion via Airflow...
+✅ DAG run triggered (id: manual_20260218...)
+⏳ Waiting for ingestion to complete...
+   State: queued
+   State: success
+✅ Ingestion completed successfully!
+🔍 Verifying discovered tables...
+✅ Tables discovered: 23
+   - actor
+   - address
+   ...
+✅ Setup complete!
 ```
 
-### Step 6.2: Fix Docker networking (CRITICAL)
+**Notes on OM 1.11.x behavior**:
+- The OM `/trigger` API endpoint returns 400 even when the pipeline runs — this is a known issue. The script bypasses it by calling Airflow directly.
+- The `/testConnection` endpoint returns 500 in some OM 1.11.x builds — this is non-fatal; ingestion will still succeed.
+- Airflow 3.x (used in this OM version) requires a JWT token via `POST /auth/token` rather than HTTP Basic Auth.
 
-**Issue**: The setup script uses `localhost:5433` which doesn't work from inside Docker network.
+### Step 6.2: Verify tables were discovered
 
-**Fix via API**:
-```bash
-source .env
-
-# Get service ID
-SERVICE_ID=$(curl -s "http://localhost:8585/api/v1/services/databaseServices/name/pagila" \
-  -H "Authorization: Bearer $OM_TOKEN" 2>/dev/null | \
-  python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
-
-# Update hostPort to use Docker service name
-curl -s -X PATCH "http://localhost:8585/api/v1/services/databaseServices/$SERVICE_ID" \
-  -H "Authorization: Bearer $OM_TOKEN" \
-  -H "Content-Type: application/json-patch+json" \
-  -d '[{"op":"replace","path":"/connection/config/hostPort","value":"pagila_postgres:5432"}]' \
-  > /dev/null 2>&1
-
-echo "✅ Updated database connection for Docker networking"
-```
-
-### Step 6.3: Initialize Airflow database (REQUIRED)
-
-**IMPORTANT**: Airflow database must be initialized before ingestion can run.
-
-```bash
-# Initialize Airflow database
-docker exec openmetadata_ingestion airflow db migrate
-
-echo "✅ Airflow database initialized"
-```
-
-**If this step is skipped**: Ingestion will appear to trigger but silently fail with no tables discovered.
-
-### Step 6.4: Trigger metadata ingestion via API
-
-```bash
-source .env
-
-# Get pipeline ID
-PIPELINE_ID=$(curl -s "http://localhost:8585/api/v1/services/ingestionPipelines/name/pagila.pagila_metadata" \
-  -H "Authorization: Bearer $OM_TOKEN" 2>/dev/null | \
-  python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
-
-# Deploy pipeline to Airflow
-curl -s -X POST "http://localhost:8585/api/v1/services/ingestionPipelines/deploy/$PIPELINE_ID" \
-  -H "Authorization: Bearer $OM_TOKEN" \
-  -H "Content-Type: application/json" > /dev/null 2>&1
-
-# Trigger metadata discovery
-curl -s -X POST "http://localhost:8585/api/v1/services/ingestionPipelines/trigger/$PIPELINE_ID" \
-  -H "Authorization: Bearer $OM_TOKEN" \
-  -H "Content-Type: application/json" > /dev/null 2>&1
-
-echo "✅ Metadata ingestion triggered"
-echo "⏳ Waiting 90 seconds for ingestion to complete..."
-sleep 90
-```
-
-### Step 6.5: Verify tables were discovered
+The script verifies automatically, but you can also check manually:
 
 ```bash
 source .env
 
 # Query API for discovered tables
-curl -s "http://localhost:8585/api/v1/tables?service=pagila&database=pagila&limit=25" \
+curl -s "http://localhost:8585/api/v1/tables?database=pagila.pagila.public&limit=50" \
   -H "Authorization: Bearer $OM_TOKEN" 2>/dev/null | \
   python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-total = data.get('paging', {}).get('total', 0)
-print(f'✅ Total tables discovered: {total}')
-for table in data.get('data', []):
+tables = data.get('data', [])
+print(f'✅ Total tables discovered: {len(tables)}')
+for table in sorted(tables, key=lambda x: x.get('name', '')):
     print(f'  - {table[\"name\"]}')
 "
-```
-
-**Expected output**:
-```
-✅ Total tables discovered: 23
-  - actor
-  - address
-  - category
-  - city
-  - country
-  - customer
-  - film
-  - film_actor
-  - film_category
-  - inventory
-  - language
-  - payment
-  - rental
-  - staff
-  - store
-  (and 8 more views...)
 ```
 
 **Expected outcome**: 23 Pagila tables visible in OpenMetadata ✅
 
 **If tables don't appear**:
-- **First**: Check if Airflow DB was initialized (Step 6.3). If skipped, run `docker exec openmetadata_ingestion airflow db migrate` then re-trigger ingestion
-- Check ingestion logs: `docker logs openmetadata_ingestion --tail 50`
-- Verify Docker networking: `docker exec openmetadata_ingestion ping pagila_postgres`
-- Re-trigger ingestion via API (repeat Step 6.4)
+- Run the setup script again — it's idempotent and will re-trigger ingestion
+- Check Airflow UI at http://localhost:8080 (login: admin/admin) for DAG status
+- Verify Docker networking: `docker exec openmetadata_ingestion python3 -c "import psycopg2; psycopg2.connect(host='pagila_postgres', port=5432, dbname='pagila', user='postgres', password='pagila'); print('OK')"`
 - See TROUBLESHOOTING section below
 
 ---
@@ -932,7 +889,150 @@ echo "✅ Text-to-query service stopped"
 
 ---
 
-## PHASE 12: FINAL VERIFICATION
+## PHASE 12: MCP SERVER SETUP
+
+**Purpose**: Expose UDAE's natural language query capabilities as MCP tools for use with Claude Code and other AI agents.
+
+**Prerequisites**:
+- PHASE 11.0 symlinks must be complete (MCP server reads `cube_project/schema/DATABASE_SCHEMA.md` at startup)
+- Cube.js must be running (MCP tools make live requests to it)
+- `mcp>=1.0.0` is already included in `requirements.txt`
+
+### Step 12.1: Verify MCP package is installed
+
+```bash
+cd /path/to/udae-project
+source venv/bin/activate
+
+# Verify mcp is installed
+python3 -c "import mcp; print('✅ mcp package available')"
+```
+
+**If not installed**:
+```bash
+pip install -r requirements.txt
+```
+
+### Step 12.2: Smoke-test the MCP server imports
+
+```bash
+source venv/bin/activate
+
+# Verify the server module imports cleanly (catches missing deps or broken symlinks)
+python3 -c "from mcp_server.server import mcp; print('✅ MCP server imports OK')"
+```
+
+**Expected output**: `✅ MCP server imports OK`
+
+**If this fails with `FileNotFoundError: cube_project/schema/DATABASE_SCHEMA.md`**:
+```bash
+# The schema parser reads this file at import time — create the symlink if missing
+mkdir -p cube_project/schema
+ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/DATABASE_SCHEMA.md
+```
+
+**If this fails with `ModuleNotFoundError: mcp`**:
+```bash
+pip install mcp>=1.0.0
+```
+
+### Step 12.3: Configure Claude Code integration
+
+The `.mcp.json` file in the project root is already created and registers the server automatically with Claude Code. No further configuration is needed for local use.
+
+```bash
+# Confirm .mcp.json exists
+cat .mcp.json
+```
+
+**Expected output**:
+```json
+{
+  "mcpServers": {
+    "udae": {
+      "type": "stdio",
+      "command": "/path/to/udae-project/venv/bin/python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/path/to/udae-project"
+    }
+  }
+}
+```
+
+**Note**: The `command` must point to the absolute path of the venv Python (not the system `python`), and `cwd` must be the project root. Both fields are required for the server to find its modules and schema files.
+
+### Step 12.4: Start Claude Code and verify server loads
+
+```bash
+# Restart Claude Code from the project directory with the venv active
+source venv/bin/activate
+claude  # or open Claude Code from your IDE
+```
+
+In Claude Code, run:
+```
+/mcp
+```
+
+**Expected output**:
+```
+● udae (connected)
+  Tools: query, get_schema, execute_cube_query, refine_query
+```
+
+**If status shows "failed" or "disconnected"**: See TROUBLESHOOTING → ERROR: MCP server fails to connect.
+
+### Step 12.5: Test MCP tools via Claude Code
+
+With the server connected, test each tool naturally in conversation:
+
+**Test 1 — Schema discovery**:
+```
+What cubes are available in the UDAE schema?
+```
+Expected: Claude calls `get_schema` and lists available cubes/measures/dimensions.
+
+**Test 2 — Natural language query**:
+```
+How many customers are in each country?
+```
+Expected: Claude calls `query`, shows the generated Cube.js query and result data.
+
+**Test 3 — Query refinement**:
+```
+Only show the top 5 countries by customer count.
+```
+Expected: Claude calls `refine_query` with the previous query and the feedback.
+
+**Test 4 — Raw query execution**:
+```
+Execute this Cube.js query directly: {"measures": ["Actor.count"], "dimensions": ["Actor.first_name"]}
+```
+Expected: Claude calls `execute_cube_query` and returns results.
+
+**Expected outcome**: All 4 MCP tools working via Claude Code ✅
+
+### Step 12.6: Optional — Run as Docker SSE service
+
+For remote or multi-client access, the MCP server can run in SSE mode via Docker:
+
+```bash
+cd /path/to/udae-project
+
+# Start MCP server with SSE transport (port 5002)
+docker compose --profile mcp up mcp_server -d
+
+# Verify it's running
+curl -s http://localhost:5002/sse || echo "SSE endpoint not ready yet"
+```
+
+**Expected**: SSE server listening on port 5002.
+
+**Note**: The Docker service installs all dependencies on first run — this may take 1-2 minutes.
+
+---
+
+## PHASE 13: FINAL VERIFICATION
 
 Run the comprehensive test script:
 
@@ -950,6 +1050,12 @@ cd /path/to/udae-project
 ✅ Profiler is configured
 ✅ LLM provider is reachable
 ✅ All systems operational!
+```
+
+**Verify MCP server separately** (test_stack.sh predates MCP):
+```bash
+source venv/bin/activate
+python3 -c "from mcp_server.server import mcp; print('✅ MCP server: OK')"
 ```
 
 **If any checks fail**: See specific phase above for troubleshooting.
@@ -1305,6 +1411,50 @@ pip install -r requirements.txt
 pip list | grep -E "openmetadata|anthropic|requests"
 ```
 
+### ERROR: MCP server fails to connect in Claude Code (`/mcp` shows failed/disconnected)
+
+**Cause**: Import error at startup, missing symlink, wrong Python, or mcp package not installed.
+
+**Diagnosis**:
+```bash
+# Run the server manually to see the actual error
+source venv/bin/activate
+python3 -m mcp_server
+# Should start silently (stdio mode) — errors appear immediately if any
+# Press Ctrl+C to stop
+```
+
+**Fix — Missing symlink** (`FileNotFoundError: cube_project/schema/DATABASE_SCHEMA.md`):
+```bash
+mkdir -p cube_project/schema
+ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/DATABASE_SCHEMA.md
+ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
+```
+
+**Fix — Wrong Python** (`ModuleNotFoundError: mcp` or `text_to_query`):
+```bash
+# Use absolute path to the venv Python in .mcp.json
+PYTHON_PATH="$(pwd)/venv/bin/python"
+python3 -c "
+import json
+with open('.mcp.json') as f:
+    cfg = json.load(f)
+cfg['mcpServers']['udae']['command'] = '$PYTHON_PATH'
+with open('.mcp.json', 'w') as f:
+    json.dump(cfg, f, indent=2)
+print('✅ Updated .mcp.json to use venv Python')
+"
+# Restart Claude Code after this change
+```
+
+**Fix — mcp package missing**:
+```bash
+source venv/bin/activate
+pip install mcp>=1.0.0
+```
+
+**After any fix**: Restart Claude Code completely, then run `/mcp` to re-check.
+
 ### ERROR: Text-to-query returns empty results
 
 **Cause**: Cube.js not serving data, or schema validation failing
@@ -1370,6 +1520,8 @@ docker volume rm $(docker volume ls -q | grep udae-project)
 - ✅ LLM-generated descriptions in OpenMetadata
 - ✅ Text-to-query running at http://localhost:5001
 - ✅ Natural language queries returning results
+- ✅ MCP server registered in Claude Code (`/mcp` shows `udae` connected)
+- ✅ MCP tools responding to natural language in Claude Code session
 
 ---
 
@@ -1377,10 +1529,11 @@ docker volume rm $(docker volume ls -q | grep udae-project)
 
 1. **Explore OpenMetadata UI**: Browse tables, lineage, descriptions
 2. **Test Cube.js Playground**: Build queries, explore data
-3. **Try natural language queries**: Ask questions in plain English
-4. **Customize descriptions**: Edit LLM-generated text in OpenMetadata
-5. **Add your own database**: Follow pattern used for Pagila
-6. **Review architecture**: Read docs/SETUP_GUIDE_COMPLETE.md for deep dive
+3. **Try natural language queries**: Ask questions in plain English via the web UI or Claude Code
+4. **Use MCP tools in Claude Code**: Ask Claude to query your data directly — no separate UI needed
+5. **Customize descriptions**: Edit LLM-generated text in OpenMetadata
+6. **Add your own database**: Follow pattern used for Pagila
+7. **Review architecture**: Read docs/SETUP_GUIDE_COMPLETE.md for deep dive
 
 ---
 
@@ -1398,12 +1551,14 @@ docker volume rm $(docker volume ls -q | grep udae-project)
 - PHASE 3: Detecting API keys in environment (use `compgen -A variable` to suggest)
 - PHASE 7: Creating profiler in UI (optional - can also use API)
 - PHASE 11: Testing web UI (user should see interactive interface)
+- PHASE 12: Restarting Claude Code to pick up `.mcp.json` (cannot be done programmatically)
 
 **What can be fully automated via API**:
 - PHASE 1-4: Pre-flight, cleanup, config, setup script
 - PHASE 5: Token retrieval (decrypt from MySQL using Fernet key)
 - PHASE 6: Database service creation and metadata ingestion (via OpenMetadata API)
 - PHASE 8-11: Semantic inference, schema generation, testing
+- PHASE 12 (partial): Install check, import smoke-test, `.mcp.json` verification
 
 **Key API automation capabilities**:
 1. **Token Retrieval**: Query MySQL directly, decrypt with Fernet key from config
@@ -1460,7 +1615,8 @@ compgen -A variable | grep -E "ANTHROPIC|OPENAI|CLAUDE|AZURE.*OPENAI"
 ✅ PHASE 9: Cube.js schemas generated (23 schemas)
 ✅ PHASE 10: Cube.js queries tested (working)
 ✅ PHASE 11: Natural language UI tested (http://localhost:5001)
-✅ PHASE 12: Final verification passed (all systems operational)
+✅ PHASE 12: MCP server verified (imports OK, .mcp.json in place — restart Claude Code to activate)
+✅ PHASE 13: Final verification passed (all systems operational)
 ```
 
 ---

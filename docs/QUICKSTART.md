@@ -67,8 +67,8 @@ echo "OM_TOKEN=eyJ..." >> .env
 3. Select **Postgres**
 4. Fill in:
    - Name: `pagila`
-   - Host: `localhost`
-   - Port: `5433`
+   - Host: `pagila_postgres`
+   - Port: `5432`
    - Database: `pagila`
    - Username: `postgres`
    - Auth Type → Password: `pagila`

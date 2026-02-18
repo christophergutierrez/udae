@@ -1,44 +1,57 @@
 #!/usr/bin/env python3
-"""Extract and decrypt OpenMetadata ingestion-bot token"""
+"""Extract and decrypt OpenMetadata ingestion-bot token.
+
+OM 1.11.x: token is in bot_entity table (not user_entity),
+and the Fernet key is in the container's environment variables.
+"""
 
 import subprocess
-import json
-from cryptography.fernet import Fernet
+import sys
 
-# Fernet key from OpenMetadata config (default)
-FERNET_KEY = b"jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA="
 
-# Query MySQL for ingestion-bot JSON
-cmd = [
-    "docker", "exec", "openmetadata_mysql",
-    "mysql", "-u", "openmetadata_user", "-popenmetadata_password",
-    "openmetadata_db", "-N", "-s",
-    "-e", "SELECT json FROM user_entity WHERE name='ingestion-bot';"
-]
+def get_fernet_key():
+    result = subprocess.run(
+        ["docker", "exec", "openmetadata_server", "env"],
+        capture_output=True, text=True
+    )
+    for line in result.stdout.splitlines():
+        if line.startswith("FERNET_KEY="):
+            return line.split("=", 1)[1]
+    return None
+
+
+def get_encrypted_token():
+    result = subprocess.run(
+        ["docker", "exec", "openmetadata_mysql",
+         "mysql", "-u", "openmetadata_user", "-popenmetadata_password",
+         "openmetadata_db", "-sNe",
+         "SELECT token FROM bot_entity WHERE name='ingestion-bot' LIMIT 1;"],
+        capture_output=True, text=True
+    )
+    return result.stdout.strip()
+
 
 try:
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    user_json = json.loads(result.stdout.strip())
+    encrypted_token = get_encrypted_token()
+    if not encrypted_token:
+        print("Error: No token found in bot_entity table. Is OpenMetadata running?", file=sys.stderr)
+        sys.exit(1)
 
-    # Extract encrypted token
-    jwt_token = user_json['authenticationMechanism']['config']['JWTToken']
-
-    # Remove 'fernet:' prefix if present
-    if jwt_token.startswith('fernet:'):
-        encrypted_token = jwt_token.replace('fernet:', '')
-    else:
-        encrypted_token = jwt_token
-
-    # If token is not encrypted (plain JWT), just print it
-    if encrypted_token.startswith('eyJ'):
+    if not encrypted_token.startswith("fernet:"):
+        # Already a plain JWT
         print(encrypted_token)
-    else:
-        # Decrypt
-        f = Fernet(FERNET_KEY)
-        decrypted = f.decrypt(encrypted_token.encode())
-        token = decrypted.decode()
-        print(token)
+        sys.exit(0)
+
+    fernet_key = get_fernet_key()
+    if not fernet_key:
+        print("Error: FERNET_KEY not found in openmetadata_server container env.", file=sys.stderr)
+        sys.exit(1)
+
+    from cryptography.fernet import Fernet
+    payload = encrypted_token.replace("fernet:", "")
+    token = Fernet(fernet_key.encode()).decrypt(payload.encode()).decode()
+    print(token)
 
 except Exception as e:
-    print(f"Error: {e}", file=__import__('sys').stderr)
-    exit(1)
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)

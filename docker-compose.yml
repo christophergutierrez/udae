@@ -59,10 +59,38 @@ services:
       timeout: 5s
       retries: 5
 
+  # Optional: MCP Server (SSE transport for remote/Docker access)
+  # Activate with: docker compose --profile mcp up
+  # For local Claude Code / Claude Desktop use, run via stdio instead (see .mcp.json)
+  mcp_server:
+    profiles: ["mcp"]
+    image: python:3.11-slim
+    container_name: udae_mcp_server
+    working_dir: /app
+    command: >
+      sh -c "pip install -r requirements.txt -q &&
+             pip install -r mcp_server/requirements.txt -q &&
+             python -m mcp_server"
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_PORT: "5002"
+      CUBEJS_API_URL: http://cube:4000/cubejs-api/v1
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
+    ports:
+      - "5002:5002"
+    volumes:
+      - .:/app
+    depends_on:
+      cube:
+        condition: service_healthy
+    networks:
+      - app_net
+
 networks:
   app_net:
     external: true
-    name: udae-project_app_net
+    name: udae_app_net
 
 volumes:
   pagila-data:

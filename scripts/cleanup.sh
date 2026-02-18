@@ -87,14 +87,14 @@ fi
 echo ""
 echo "🗑️  Removing Docker volumes..."
 
-# Remove udae-project volumes
+# Remove volumes (project name is "udae" from directory name, not "udae-project")
 docker volume rm \
-  udae-project_db-data-mysql \
-  udae-project_es-data \
-  udae-project_ingestion-volume-dag-airflow \
-  udae-project_ingestion-volume-dags \
-  udae-project_ingestion-volume-tmp \
-  udae-project_pagila-data \
+  udae_db-data-mysql \
+  udae_es-data \
+  udae_ingestion-volume-dag-airflow \
+  udae_ingestion-volume-dags \
+  udae_ingestion-volume-tmp \
+  udae_pagila-data \
   2>/dev/null || echo "  Some volumes already removed or don't exist"
 
 # Remove any dangling volumes
@@ -109,10 +109,9 @@ fi
 echo ""
 echo "🗑️  Removing Docker networks..."
 
-# Remove custom networks
+# Remove custom networks (project name is "udae" from directory name)
 docker network rm \
-  udae-project_app_net \
-  cube_project_default \
+  udae_app_net \
   2>/dev/null || echo "  Some networks already removed or don't exist"
 
 echo "  ✅ Removed custom networks"

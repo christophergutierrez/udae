@@ -41,8 +41,9 @@ echo "Testing Cube.js..."
 if curl -sf http://localhost:4000/readyz > /dev/null 2>&1; then
     echo "✅ Cube.js is healthy"
 
-    # Check schemas
-    SCHEMA_COUNT=$(curl -sf http://localhost:4000/cubejs-api/v1/meta 2>/dev/null | grep -o '"name"' | wc -l)
+    # Check schemas (parse actual cube count from JSON)
+    SCHEMA_COUNT=$(curl -sf http://localhost:4000/cubejs-api/v1/meta 2>/dev/null | \
+      python3 -c "import sys, json; d=json.load(sys.stdin); print(len(d.get('cubes', [])))" 2>/dev/null || echo "?")
     echo "   Cubes loaded: $SCHEMA_COUNT"
 else
     echo "❌ Cube.js is not responding"
