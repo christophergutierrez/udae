@@ -1,26 +1,19 @@
 # UDAE - Universal Database Answer Engine
-# Root level dependencies for all components
+# Consolidated dependencies for all components
 
-# Core Dependencies
+# -- Application Core --
 anthropic>=0.21.0
 httpx>=0.27.0
 requests>=2.31.0
 python-dotenv>=1.0.0
+pyyaml>=6.0
 mcp>=1.0.0
 
-# Text-to-Query Service
+# -- Web Server (text_to_query) --
 flask[async]>=3.0.0
 flask-cors>=4.0.0
 
-# Schema and Validation
-pyyaml>=6.0
-
-# Optional: For development
+# -- Development & Testing --
 pytest>=7.4.0
 black>=23.0.0
 flake8>=6.0.0
-
-# Note: Each component has its own requirements.txt in its directory
-# - text_to_query/requirements.txt
-# - semantic_inference/requirements.txt
-# - semantic_layer/requirements.txt
