@@ -6,7 +6,6 @@ Complete automated setup
 
 import os
 import sys
-import json
 import time
 import datetime
 import requests
@@ -22,17 +21,8 @@ if not OM_TOKEN:
     print("❌ Error: OM_TOKEN not set in .env file")
     print()
     print("Get token from OpenMetadata (OM 1.11.x - Fernet method):")
-    print("  FERNET_KEY=$(docker exec openmetadata_server env | grep FERNET_KEY | cut -d= -f2)")
-    print("  ENC_TOKEN=$(docker exec openmetadata_mysql mysql -u openmetadata_user -popenmetadata_password \\")
-    print("    openmetadata_db -sNe \\")
-    print("    \"SELECT token FROM bot_entity WHERE name='ingestion-bot' LIMIT 1;\" 2>/dev/null)")
-    print("  python3 -c \"")
-    print("    import os")
-    print("    from cryptography.fernet import Fernet")
-    print("    key = os.environ['FERNET_KEY']")
-    print("    enc = os.environ['ENC_TOKEN'].replace('fernet:', '')")
-    print("    print(Fernet(key.encode()).decrypt(enc.encode()).decode())")
-    print("  \"")
+    print("  python3 scripts/get_om_token.py")
+    print("  # Then add to .env: OM_TOKEN=<output>")
     sys.exit(1)
 
 HEADERS = {
@@ -47,8 +37,8 @@ def get_airflow_token():
     """Get Airflow API JWT token"""
     response = requests.post(
         f"{AIRFLOW_BASE}/auth/token",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        data="username=admin&password=admin"
+        headers={"Content-Type": "application/json"},
+        json={"username": "admin", "password": "admin"}
     )
     if response.status_code == 200:
         return response.json()["access_token"]
@@ -115,7 +105,8 @@ def create_database_service():
                 patch_response = requests.patch(
                     patch_url,
                     headers={**HEADERS, "Content-Type": "application/json-patch+json"},
-                    json=[{"op": "replace", "path": "/connection/config/hostPort", "value": "pagila_postgres:5432"}]
+                    json=[{"op": "replace", "path": "/connection/config/hostPort",
+                           "value": "pagila_postgres:5432"}]
                 )
                 if patch_response.status_code == 200:
                     print("✅ Fixed hostPort to pagila_postgres:5432")

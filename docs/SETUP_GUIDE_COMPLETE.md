@@ -326,7 +326,7 @@ echo "OM_TOKEN=$TOKEN" >> .env
 
 ### Step 10: Add Pagila Database to OpenMetadata
 
-**Via UI (OpenMetadata 1.11.8):**
+**Via UI (OpenMetadata 1.11.9):**
 1. Go to **Settings** (gear icon, top right)
 2. Click **Services** in left sidebar
 3. Click **Databases** tab

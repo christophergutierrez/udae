@@ -175,6 +175,44 @@ rm -f /tmp/ingestion_bot.json 2>/dev/null || true
 echo "  ✅ Removed temporary files from /tmp"
 
 echo ""
+echo "🗑️  Removing docker-volume directory..."
+
+if [ -d "$PROJECT_ROOT/docker-volume" ]; then
+    rm -rf "$PROJECT_ROOT/docker-volume"
+    echo "  ✅ Removed docker-volume directory"
+fi
+
+echo ""
+echo "🔍  Scanning project root for accidental artifacts..."
+
+# Files that legitimately live in the root with no extension or known names
+KNOWN_ROOT_FILES=(
+  ".env" ".gitignore" ".mcp.json" ".git"
+  "docker-compose.yml" "om-compose.yml"
+  "requirements.txt" "pytest.ini" "README.md"
+  "Makefile" "LICENSE"
+)
+
+while IFS= read -r -d '' f; do
+  basename=$(basename "$f")
+
+  skip=false
+  for known in "${KNOWN_ROOT_FILES[@]}"; do
+    [[ "$basename" == "$known" ]] && skip=true && break
+  done
+  $skip && continue
+
+  # Remove extension-less files larger than 1 MB — these are never source files
+  if [[ "$basename" != *.* ]] && [[ $(stat -c%s "$f") -gt 1048576 ]]; then
+    size=$(du -sh "$f" | cut -f1)
+    echo "  ⚠️  Removing suspicious large file: $basename ($size)"
+    rm -f "$f"
+  fi
+done < <(find "$PROJECT_ROOT" -maxdepth 1 -type f -print0)
+
+echo "  ✅ Root artifact scan complete"
+
+echo ""
 echo "🗑️  Removing configuration & environment..."
 
 # Remove virtual environment

@@ -61,7 +61,7 @@ echo "OM_TOKEN=eyJ..." >> .env
 
 ### 4. Add Database to OpenMetadata (3 minutes)
 
-**Via UI (OpenMetadata 1.11.8):**
+**Via UI (OpenMetadata 1.11.9):**
 1. Go to **Settings → Services → Databases**
 2. Click **Add Service**
 3. Select **Postgres**

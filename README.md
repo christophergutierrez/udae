@@ -37,7 +37,7 @@ All documentation is in the **[docs/](./docs/)** folder:
 
 4. **[TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)** - Common issues & solutions
    - Apple Silicon fixes
-   - OpenMetadata 1.11.8 specifics
+   - OpenMetadata 1.11.9 specifics
    - Step-by-step debugging
 
 ### Additional Documentation

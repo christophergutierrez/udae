@@ -59,7 +59,7 @@ volumes:
 Failed to encrypt 'Postgres' connection stored in DB due to an unrecognized field: 'password'
 ```
 
-**Cause:** OpenMetadata 1.11.8 changed password field structure
+**Cause:** OpenMetadata 1.11.9 changed password field structure
 
 **Solution:**
 ```json
@@ -132,7 +132,7 @@ databaseFilterPattern returned 0 result. At least 1 database must be returned by
 
 ---
 
-### 6. OpenMetadata UI Navigation (v1.11.8)
+### 6. OpenMetadata UI Navigation (v1.11.9)
 
 **Where to configure ingestion:**
 
@@ -290,6 +290,6 @@ If you're still stuck:
 
 1. **Apple Silicon:** Elasticsearch requires platform override (already handled)
 2. **Memory:** Minimum 8GB RAM, 16GB recommended
-3. **OpenMetadata 1.11.8:** UI navigation different from other versions
+3. **OpenMetadata 1.11.9:** UI navigation different from other versions
 4. **Profiler:** Requires metadata ingestion to run first
 5. **Token expiry:** JWT tokens expire, need to regenerate periodically

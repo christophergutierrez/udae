@@ -12,7 +12,7 @@
 Universal Database Answer Engine - turns databases into self-describing systems with natural language query capability.
 
 **Architecture**:
-- OpenMetadata 1.11.8 (catalog, source of truth) → Port 8585
+- OpenMetadata 1.11.9 (catalog, source of truth) → Port 8585
 - Pagila sample database (Postgres) → Port 5433
 - Cube.js (semantic serving layer) → Port 4000
 - Text-to-Query (natural language interface) → Port 5001
@@ -24,7 +24,7 @@ Universal Database Answer Engine - turns databases into self-describing systems 
 
 **Platform Notes**:
 - macOS Apple Silicon (M1/M2/M3): Elasticsearch requires `platform: linux/amd64`
-- OpenMetadata 1.11.8 API: Password field wrapped in `authType` object
+- OpenMetadata 1.11.9 API: Password field wrapped in `authType` object
 
 **Time Required**: 30-45 minutes automated, 2-3 hours manual
 
@@ -238,7 +238,7 @@ docker exec pagila_postgres psql -U postgres -d pagila -c "SELECT COUNT(*) FROM 
 
 ### Step 5.1: Retrieve ingestion-bot token from database
 
-**Note on OM 1.11.x**: The token is stored in the `bot_entity` table (not `user_entity`), and the Fernet key is in the container's environment (not in the YAML config file which only has a reference variable).
+**Note on OM 1.11.x**: The token is stored in the `user_entity` table (not `bot_entity`), Fernet-encrypted, with the key in the container's environment (not in the YAML config file which only has a reference variable).
 
 ```bash
 cd /path/to/udae-project
@@ -248,12 +248,12 @@ pip install cryptography -q
 python3 << 'EOF'
 import subprocess, json
 
-# Get encrypted token from MySQL bot_entity table
+# Get encrypted token from MySQL user_entity table
 result = subprocess.run(
     ["docker", "exec", "openmetadata_mysql",
      "mysql", "-u", "openmetadata_user", "-popenmetadata_password",
      "openmetadata_db", "-sNe",
-     "SELECT token FROM bot_entity WHERE name='ingestion-bot' LIMIT 1;"],
+     "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.authenticationMechanism.config.JWTToken')) FROM user_entity WHERE name='ingestion-bot';"],
     capture_output=True, text=True
 )
 encrypted_token = result.stdout.strip()
@@ -294,7 +294,7 @@ EOF
 ```
 
 **What this does**:
-1. Queries `bot_entity` table in MySQL for the ingestion-bot token
+1. Queries `user_entity` table in MySQL for the ingestion-bot token (Fernet-encrypted)
 2. Gets Fernet encryption key from the container's environment variables
 3. Decrypts token using cryptography library
 4. Saves decrypted token to .env file
@@ -441,26 +441,28 @@ for table in sorted(tables, key=lambda x: x.get('name', '')):
 
 ```bash
 cd /path/to/udae-project
+set -a; source .env; set +a
 source venv/bin/activate
-source .env
 
-python3 semantic_inference/generate_descriptions.py \
-  --service pagila \
-  --database pagila \
-  --schema public \
-  --write-to-openmetadata
+python3 -m semantic_inference --service pagila
 ```
 
 **Expected output**:
 ```
-Loading schema for pagila.pagila.public...
-Found 15 tables
-Generating descriptions with Claude...
-Writing to OpenMetadata...
-✅ Updated actor table
-✅ Updated customer table
+UDAE Semantic Inference
+OpenMetadata: http://localhost:8585/api
+Service: pagila
+Model: claude-sonnet-4-5-20250929
 ...
-✅ Complete! Updated 15 tables, 200+ columns
+Found 23 tables
+Processing 23 tables (after filtering)
+
+[1/23] Processing: pagila.pagila.public.actor
+  Context: 246 chars, 4 columns
+  LLM response: table_type=MASTER, pii_risk=MEDIUM, columns=4
+  Updated table description
+...
+✅ Complete!
 ```
 
 **Verification in UI**:
@@ -1085,7 +1087,7 @@ docker compose -f om-compose.yml up -d
 
 ### ERROR: "Failed to encrypt connection - unrecognized field: 'password'"
 
-**Cause**: OpenMetadata 1.11.8 API change
+**Cause**: OpenMetadata 1.11.9 API change
 
 **Fix**: Password must be wrapped in `authType` object. The setup script already handles this. If manually creating service:
 ```json
@@ -1208,8 +1210,8 @@ curl -s "http://localhost:8585/api/v1/tables?service=pagila&limit=1" \
 ```bash
 # Simply re-run the command - it skips already-processed tables automatically
 cd /path/to/udae-project
+set -a; source .env; set +a
 source venv/bin/activate
-source .env
 
 python3 -m semantic_inference --service pagila
 
@@ -1585,7 +1587,7 @@ compgen -A variable | grep -E "ANTHROPIC|OPENAI|CLAUDE|AZURE.*OPENAI"
 
 **Key success indicators**:
 - All `docker ps` shows 6 containers running
-- `curl http://localhost:8585/api/v1/system/version` returns `{"version":"1.11.8"}`
+- `curl http://localhost:8585/api/v1/system/version` returns `{"version":"1.11.9"}`
 - `curl http://localhost:4000/readyz` returns `{"health":"HEALTH"}`
 - API query returns 23 tables: `curl -H "Authorization: Bearer $OM_TOKEN" "http://localhost:8585/api/v1/tables?service=pagila&limit=1"`
 

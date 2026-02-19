@@ -10,10 +10,10 @@ After testing the fresh setup from scratch, we discovered several issues and upd
 Complete troubleshooting guide covering all issues we encountered:
 - Elasticsearch on Apple Silicon (M1/M2/M3)
 - MySQL volume permission errors on macOS
-- Password field structure change in OpenMetadata 1.11.8
+- Password field structure change in OpenMetadata 1.11.9
 - Token authorization issues
 - Profiler "databaseFilterPattern returned 0 result" error
-- Correct UI navigation for v1.11.8
+- Correct UI navigation for v1.11.9
 - Directory structure (cube_project/schema vs schemas/)
 - Quick diagnostics commands
 
@@ -31,7 +31,7 @@ Complete troubleshooting guide covering all issues we encountered:
 
 ### 3. **SETUP_GUIDE_COMPLETE.md**
 **Major Changes:**
-- **Step 10:** Updated UI navigation for OpenMetadata 1.11.8
+- **Step 10:** Updated UI navigation for OpenMetadata 1.11.9
   - Correct path: Settings → Services → Databases → Add Service
   - Updated password field format (authType wrapper)
 
@@ -51,7 +51,7 @@ Complete troubleshooting guide covering all issues we encountered:
 
 ### 4. **QUICKSTART.md**
 **Updated:**
-- Steps 3-6: Corrected UI navigation for v1.11.8
+- Steps 3-6: Corrected UI navigation for v1.11.9
 - Step 4: Updated password field to use authType
 - Step 5: NEW - Metadata Ingestion (separate step)
 - Step 6: Profiler now optional and after metadata
@@ -61,7 +61,7 @@ Complete troubleshooting guide covering all issues we encountered:
 
 ## Key Corrections
 
-### 1. UI Navigation (OpenMetadata 1.11.8)
+### 1. UI Navigation (OpenMetadata 1.11.9)
 **Before (Wrong):**
 - Services → pagila → Ingestion tab
 
@@ -134,7 +134,7 @@ ln -s $(pwd)/schemas/* cube_project/schema/
 All steps now work correctly on a fresh macOS system with:
 - ✅ Apple Silicon (M1/M2/M3)
 - ✅ Docker Desktop
-- ✅ OpenMetadata 1.11.8
+- ✅ OpenMetadata 1.11.9
 - ✅ From completely empty directory
 
 ## Remaining Work
@@ -158,7 +158,7 @@ These are nice-to-have and not critical for initial setup.
 
 The documentation is now:
 - ✅ **Tested** - Verified on fresh setup
-- ✅ **Accurate** - Matches OpenMetadata 1.11.8 UI
+- ✅ **Accurate** - Matches OpenMetadata 1.11.9 UI
 - ✅ **Complete** - Covers all common issues
 - ✅ **Apple Silicon Ready** - All M1/M2/M3 fixes included
 - ✅ **Automated** - setup.sh handles most issues
@@ -172,5 +172,5 @@ Users should now be able to:
 ---
 
 **Date Updated:** 2026-02-12
-**Tested On:** macOS with Apple Silicon, OpenMetadata 1.11.8, Docker Desktop
+**Tested On:** macOS with Apple Silicon, OpenMetadata 1.11.9, Docker Desktop
 **Status:** ✅ Ready for Production Use

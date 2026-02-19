@@ -24,6 +24,7 @@ schemas/*.bak
 cube_project/
 data/
 logs/
+docker-volume/
 
 # Downloaded compose file
 om-compose.yml
