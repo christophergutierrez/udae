@@ -1,4 +1,7 @@
 """
+**DEPRECATED**: This module is not actively used in the current system. 
+The schema is dynamically loaded from the Cube.js API via `cube_metadata.py`.
+
 Schema relationship parser for DATABASE_SCHEMA.md
 
 Extracts relationship information from the markdown documentation

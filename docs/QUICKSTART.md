@@ -49,6 +49,13 @@ Wait for OpenMetadata to fully start (2-3 minutes). You'll see: ✅ OpenMetadata
 ### 3. Get OpenMetadata Token (2 minutes)
 
 ```bash
+# Get token via script
+./scripts/get_om_token.py >> .env
+echo "" >> .env # Add a newline for good measure
+# Verify it's there
+grep OM_TOKEN .env
+
+# Or, manually:
 # Open browser to http://localhost:8585
 # Login: admin / admin
 
@@ -56,7 +63,7 @@ Wait for OpenMetadata to fully start (2-3 minutes). You'll see: ✅ OpenMetadata
 # Copy the JWT token (starts with "eyJ...")
 
 # Add to .env file:
-echo "OM_TOKEN=eyJ..." >> .env
+# echo "OM_TOKEN=eyJ..." >> .env
 ```
 
 ### 4. Add Database to OpenMetadata (3 minutes)
@@ -76,7 +83,7 @@ echo "OM_TOKEN=eyJ..." >> .env
 
 **Or use script:**
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 python scripts/setup_openmetadata.py
 ```
 
@@ -114,7 +121,7 @@ Wait 2-3 minutes for completion.
 
 ```bash
 # Activate Python environment
-source venv/bin/activate
+source .venv/bin/activate
 
 # Run semantic inference (adds LLM-generated descriptions)
 python -m semantic_inference --service pagila
@@ -131,7 +138,7 @@ python -m semantic_inference --service pagila
 python -m semantic_layer --service pagila
 
 # Expected output:
-# Generated 23 .js schema files in ./schemas/
+# Generated 23 .js schema files in ./cubes/
 
 # Restart Cube.js to load new schemas
 docker restart cube_server
@@ -149,9 +156,9 @@ sleep 10
 mkdir -p cube_project/schema
 
 # Create symlinks to Cube.js schemas
-ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
+find ./cubes -name "*.js" -exec ln -sf "$(pwd)/{}" cube_project/schema/ \; 
 
-# Create symlink to database schema docs
+# Create symlink for the auto-generated database schema documentation
 ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/
 
 # Verify
@@ -163,7 +170,7 @@ ls -la cube_project/schema/
 
 ```bash
 # Start the natural language interface
-python -m text_to_query
+./text_to_query/start.sh
 
 # Expected output:
 # * Running on http://localhost:5001
