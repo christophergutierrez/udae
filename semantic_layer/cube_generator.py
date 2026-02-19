@@ -50,7 +50,9 @@ class CubeGenerator:
     def _to_cube_name(self, table_name: str) -> str:
         """Convert table name to Cube.js naming convention (PascalCase)."""
         # Remove common prefixes
-        table_name = table_name.replace("tbl_", "").replace("dim_", "").replace("fact_", "")
+        table_name = (
+            table_name.replace("tbl_", "").replace("dim_", "").replace("fact_", "")
+        )
 
         # Convert to PascalCase
         parts = table_name.replace("-", "_").split("_")
@@ -108,9 +110,8 @@ class CubeGenerator:
         lines.append("  measures: {")
 
         # Add standard count measure for every cube
-        cube_lower = cube_name.lower()
-        lines.append(f"    count: {{")
-        lines.append(f"      type: \"count\",")
+        lines.append("    count: {")
+        lines.append('      type: "count",')
         lines.append(f'      description: "Count of {table_info.name} records",')
         lines.append("    },")
 
@@ -193,7 +194,9 @@ class CubeGenerator:
 
         return "\n".join(measure_lines)
 
-    def _build_dimension(self, column: dict[str, Any], force_primary: bool = False) -> str:
+    def _build_dimension(
+        self, column: dict[str, Any], force_primary: bool = False
+    ) -> str:
         """Build a Cube.js dimension definition."""
         name = column.get("name", "")
         data_type = column.get("dataType", "").lower()
@@ -236,7 +239,10 @@ class CubeGenerator:
             return "time"
 
         # Numeric types
-        if any(t in data_type for t in ["int", "float", "double", "decimal", "numeric", "real"]):
+        if any(
+            t in data_type
+            for t in ["int", "float", "double", "decimal", "numeric", "real"]
+        ):
             return "number"
 
         # Boolean types
@@ -265,7 +271,9 @@ class CubeGenerator:
         lines.append("// Cube.js model index")
         lines.append("// Auto-generated from OpenMetadata")
         lines.append("//")
-        lines.append("// Cube.js automatically discovers all .js files in this directory")
+        lines.append(
+            "// Cube.js automatically discovers all .js files in this directory"
+        )
         lines.append("// No exports needed - individual cube files are loaded directly")
 
         with open(filepath, "w") as f:
@@ -324,8 +332,10 @@ Auto-generated from OpenMetadata using semantic layer inference.
 
 """
 
-        content += f"- `index.js` - Exports all cubes\n"
-        for table in sorted(summary.get("fact_tables", []) + summary.get("dimension_tables", [])):
+        content += "- `index.js` - Exports all cubes\n"
+        for table in sorted(
+            summary.get("fact_tables", []) + summary.get("dimension_tables", [])
+        ):
             cube_name = self._to_cube_name(table)
             content += f"- `{cube_name}.js` - Schema for {table}\n"
 

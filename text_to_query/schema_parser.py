@@ -7,7 +7,7 @@ to build a complete graph of table relationships.
 
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Optional
 
 
 class SchemaRelationshipParser:
@@ -15,7 +15,12 @@ class SchemaRelationshipParser:
 
     def __init__(self, schema_md_path: str = None):
         if schema_md_path is None:
-            schema_md_path = Path(__file__).parent.parent / "cube_project" / "schema" / "DATABASE_SCHEMA.md"
+            schema_md_path = (
+                Path(__file__).parent.parent
+                / "cube_project"
+                / "schema"
+                / "DATABASE_SCHEMA.md"
+            )
         self.schema_path = Path(schema_md_path)
         self.relationships: Dict[str, Dict] = {}
         self.entities: Set[str] = set()
@@ -53,7 +58,7 @@ class SchemaRelationshipParser:
     def _extract_entities(self, content: str):
         """Extract all entity names from the schema."""
         # Find entity definitions in mermaid diagrams
-        entity_pattern = r'^\s+(\w+)\s+\{'
+        entity_pattern = r"^\s+(\w+)\s+\{"
         for match in re.finditer(entity_pattern, content, re.MULTILINE):
             entity = match.group(1)
             self.entities.add(entity)
@@ -63,7 +68,9 @@ class SchemaRelationshipParser:
         # Pattern: ENTITY1 ||--o{ ENTITY2 : relationship_name
         # Cardinality symbols: ||--o{ (one-to-many), }o--o{ (many-to-many)
 
-        rel_pattern = r'(\w+)\s+([\|\}][\|\}o]--o?[\{\|])\s+(\w+)\s*:\s*["\']?([^"\'\n]+)["\']?'
+        rel_pattern = (
+            r'(\w+)\s+([\|\}][\|\}o]--o?[\{\|])\s+(\w+)\s*:\s*["\']?([^"\'\n]+)["\']?'
+        )
 
         for match in re.finditer(rel_pattern, content):
             from_entity = match.group(1)
@@ -72,11 +79,11 @@ class SchemaRelationshipParser:
             description = match.group(4).strip()
 
             # Determine relationship type from cardinality
-            if '||--o{' in cardinality:
+            if "||--o{" in cardinality:
                 rel_type = "one_to_many"
                 from_rel = "hasMany"
                 to_rel = "belongsTo"
-            elif '}o--o{' in cardinality or '||--||' in cardinality:
+            elif "}o--o{" in cardinality or "||--||" in cardinality:
                 rel_type = "many_to_many"
                 from_rel = "hasMany"
                 to_rel = "hasMany"
@@ -93,7 +100,7 @@ class SchemaRelationshipParser:
                 "type": rel_type,
                 "from_relationship": from_rel,
                 "to_relationship": to_rel,
-                "description": description
+                "description": description,
             }
 
     def _extract_foreign_keys(self, content: str):
@@ -104,9 +111,9 @@ class SchemaRelationshipParser:
         fk_pattern = r'(\w+)\s+(\w+)\s+FK\s+["\']([^"\']+)["\']'
 
         current_entity = None
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             # Track current entity
-            entity_match = re.match(r'^\s+(\w+)\s+\{', line)
+            entity_match = re.match(r"^\s+(\w+)\s+\{", line)
             if entity_match:
                 current_entity = entity_match.group(1)
                 if current_entity not in self.foreign_keys:
@@ -121,29 +128,33 @@ class SchemaRelationshipParser:
 
                     # Infer target table from field name
                     # e.g., customer_id -> Customer, store_id -> Store
-                    if fk_field.endswith('_id'):
+                    if fk_field.endswith("_id"):
                         target_table = fk_field[:-3].title()
                         # Handle special cases
-                        if target_table == 'Country':
-                            target_table = 'Country'
+                        if target_table == "Country":
+                            target_table = "Country"
 
-                        self.foreign_keys[current_entity].append({
-                            "field": fk_field,
-                            "references": target_table,
-                            "description": fk_description
-                        })
+                        self.foreign_keys[current_entity].append(
+                            {
+                                "field": fk_field,
+                                "references": target_table,
+                                "description": fk_description,
+                            }
+                        )
 
     def _extract_cardinality_table(self, content: str):
         """Extract relationships from the cardinality summary table."""
         # Find the "One-to-Many Relationships" section
-        section_match = re.search(r'### One-to-Many Relationships\n(.+?)###', content, re.DOTALL)
+        section_match = re.search(
+            r"### One-to-Many Relationships\n(.+?)###", content, re.DOTALL
+        )
         if not section_match:
             return
 
         section = section_match.group(1)
 
         # Parse table rows: | Parent | Child | Relationship |
-        row_pattern = r'\|\s*(\w+)\s*\|\s*(\w+)\s*\|\s*([^|]+)\s*\|'
+        row_pattern = r"\|\s*(\w+)\s*\|\s*(\w+)\s*\|\s*([^|]+)\s*\|"
 
         for match in re.finditer(row_pattern, section):
             parent = match.group(1)
@@ -151,7 +162,7 @@ class SchemaRelationshipParser:
             description = match.group(3).strip()
 
             # Skip header row
-            if parent == "Parent Table" or parent.startswith('-'):
+            if parent == "Parent Table" or parent.startswith("-"):
                 continue
 
             key = (parent, child)
@@ -162,7 +173,7 @@ class SchemaRelationshipParser:
                     "type": "one_to_many",
                     "from_relationship": "hasMany",
                     "to_relationship": "belongsTo",
-                    "description": description
+                    "description": description,
                 }
 
     def get_join_path(self, from_entity: str, to_entity: str) -> Optional[List[str]]:
@@ -229,14 +240,12 @@ class SchemaRelationshipParser:
             if from_e == entity:
                 children.append(to_e)
 
-        return {
-            "parents": parents,
-            "children": children
-        }
+        return {"parents": parents, "children": children}
 
 
 # Singleton instance
 _parser = None
+
 
 def get_schema_parser() -> SchemaRelationshipParser:
     """Get singleton parser instance."""

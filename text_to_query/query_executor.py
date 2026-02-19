@@ -37,11 +37,7 @@ class QueryExecutor:
                 data = response.json()
 
                 if "error" in data:
-                    return {
-                        "success": False,
-                        "error": data["error"],
-                        "query": query
-                    }
+                    return {"success": False, "error": data["error"], "query": query}
 
                 # Extract results
                 results = data.get("data", [])
@@ -59,7 +55,7 @@ class QueryExecutor:
                 try:
                     error_json = e.response.json()
                     error_detail = error_json.get("error", error_detail)
-                except:
+                except Exception:
                     pass
 
                 return {
@@ -97,8 +93,7 @@ class QueryExecutor:
         rows = []
         for row in results:
             row_str = " | ".join(
-                str(row.get(col, "")).ljust(widths[col])
-                for col in columns
+                str(row.get(col, "")).ljust(widths[col]) for col in columns
             )
             rows.append(row_str)
 
@@ -118,9 +113,7 @@ class QueryExecutor:
         # Rows
         rows = []
         for row in results:
-            row_str = "| " + " | ".join(
-                str(row.get(col, "")) for col in columns
-            ) + " |"
+            row_str = "| " + " | ".join(str(row.get(col, "")) for col in columns) + " |"
             rows.append(row_str)
 
         return f"{header}\n{separator}\n" + "\n".join(rows)
@@ -134,15 +127,22 @@ class QueryExecutor:
             Dict with validation result and cleaned query
         """
         # Basic structure validation
-        required_keys = []  # Cube.js is flexible
         if not any(k in query for k in ["dimensions", "measures"]):
             return {
                 "valid": False,
-                "error": "Query must have at least one dimension or measure"
+                "error": "Query must have at least one dimension or measure",
             }
 
         # Check for valid keys and auto-clean invalid ones
-        valid_keys = ["dimensions", "measures", "filters", "order", "limit", "offset", "timeDimensions"]
+        valid_keys = [
+            "dimensions",
+            "measures",
+            "filters",
+            "order",
+            "limit",
+            "offset",
+            "timeDimensions",
+        ]
         invalid_keys = [k for k in query.keys() if k not in valid_keys]
 
         if invalid_keys:
@@ -152,10 +152,7 @@ class QueryExecutor:
                 "valid": True,
                 "cleaned": True,
                 "removed_keys": invalid_keys,
-                "query": cleaned_query
+                "query": cleaned_query,
             }
 
-        return {
-            "valid": True,
-            "query": query
-        }
+        return {"valid": True, "query": query}

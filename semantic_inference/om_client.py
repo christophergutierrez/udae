@@ -16,8 +16,10 @@ class OpenMetadataClient:
         Initialize OpenMetadata client.
 
         Args:
-            base_url: Base URL for OpenMetadata API (e.g., http://localhost:8585/api)
-            token: Authentication token (can be empty for unauthenticated access)
+            base_url: Base URL for OpenMetadata API
+                      (e.g., http://localhost:8585/api)
+            token: Authentication token (can be empty for unauthenticated
+                   access)
         """
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
@@ -101,7 +103,9 @@ class OpenMetadataClient:
             params={"fields": "columns,columnProfile"},
         )
 
-    def update_table_description(self, table_id: str, description: str) -> dict[str, Any]:
+    def update_table_description(
+        self, table_id: str, description: str
+    ) -> dict[str, Any]:
         """Update a table's description."""
         return self.patch(
             f"/v1/tables/{table_id}",
@@ -114,10 +118,18 @@ class OpenMetadataClient:
         """Update a column's description."""
         return self.patch(
             f"/v1/tables/{table_id}",
-            [{"op": "add", "path": f"/columns/{col_index}/description", "value": description}],
+            [
+                {
+                    "op": "add",
+                    "path": f"/columns/{col_index}/description",
+                    "value": description,
+                }
+            ],
         )
 
-    def add_column_tag(self, table_id: str, col_index: int, tag_fqn: str) -> dict[str, Any]:
+    def add_column_tag(
+        self, table_id: str, col_index: int, tag_fqn: str
+    ) -> dict[str, Any]:
         """Add a tag to a column."""
         return self.patch(
             f"/v1/tables/{table_id}",

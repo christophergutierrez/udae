@@ -13,7 +13,7 @@ from typing import Optional
 from dotenv import load_dotenv
 
 # Load .env from parent directory or current directory
-env_path = Path(__file__).parent.parent / '.env'
+env_path = Path(__file__).parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 else:
@@ -33,15 +33,13 @@ class LLMConfig:
     def __post_init__(self):
         """Auto-detect credentials from environment."""
         if self.api_key is None:
-            self.api_key = (
-                os.environ.get("ANTHROPIC_AUTH_TOKEN") or
-                os.environ.get("ANTHROPIC_API_KEY")
+            self.api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get(
+                "ANTHROPIC_API_KEY"
             )
 
         if self.base_url is None:
             self.base_url = os.environ.get(
-                "ANTHROPIC_BASE_URL",
-                "https://api.anthropic.com"
+                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
             )
 
     def get_headers(self) -> dict:
@@ -59,8 +57,8 @@ class LLMConfig:
 
     def construct_url(self, endpoint: str = "messages") -> str:
         """Construct full API URL."""
-        base = self.base_url.rstrip('/')
-        if base.endswith('/v1'):
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
             return f"{base}/{endpoint}"
         else:
             return f"{base}/v1/{endpoint}"
@@ -128,7 +126,10 @@ class TextToQueryConfig:
         issues = []
 
         if not self.llm.api_key:
-            issues.append("LLM API key not configured (set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY)")
+            issues.append(
+                "LLM API key not configured (set ANTHROPIC_AUTH_TOKEN or "
+                "ANTHROPIC_API_KEY)"
+            )
 
         if not self.cube.api_url:
             issues.append("Cube.js API URL not configured")

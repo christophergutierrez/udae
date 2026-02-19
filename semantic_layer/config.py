@@ -11,6 +11,7 @@ from typing import Optional
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()  # Load .env file if it exists
 except ImportError:
     pass  # python-dotenv not installed, will use environment variables only
@@ -29,7 +30,9 @@ class LLMConfig:
     def __post_init__(self):
         """Auto-detect auth settings from environment if not explicitly set."""
         if self.api_key is None:
-            self.api_key = os.getenv("ANTHROPIC_AUTH_TOKEN") or os.getenv("ANTHROPIC_API_KEY")
+            self.api_key = os.getenv("ANTHROPIC_AUTH_TOKEN") or os.getenv(
+                "ANTHROPIC_API_KEY"
+            )
 
         if self.base_url is None:
             self.base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
@@ -45,7 +48,9 @@ class LLMConfig:
 class OpenMetadataConfig:
     """OpenMetadata connection settings."""
 
-    url: str = field(default_factory=lambda: os.getenv("OM_URL", "http://localhost:8585/api"))
+    url: str = field(
+        default_factory=lambda: os.getenv("OM_URL", "http://localhost:8585/api")
+    )
     token: str = field(default_factory=lambda: os.getenv("OM_TOKEN", ""))
 
 
@@ -57,7 +62,9 @@ class SemanticLayerConfig:
     service_name: str = "pagila"
 
     # Output settings
-    output_dir: Path = field(default_factory=lambda: Path(os.getenv("OUTPUT_DIR", "./cubes")))
+    output_dir: Path = field(
+        default_factory=lambda: Path(os.getenv("OUTPUT_DIR", "./cubes"))
+    )
 
     # Sub-configurations
     llm: LLMConfig = field(default_factory=LLMConfig)
@@ -78,9 +85,9 @@ class SemanticLayerConfig:
         # Only use explicit args if provided, otherwise let config auto-detect
         om_config_kwargs = {}
         if args.om_url:
-            om_config_kwargs['url'] = args.om_url
+            om_config_kwargs["url"] = args.om_url
         if args.om_token:  # Only set if explicitly provided
-            om_config_kwargs['token'] = args.om_token
+            om_config_kwargs["token"] = args.om_token
 
         return cls(
             service_name=args.service,

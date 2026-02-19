@@ -24,8 +24,7 @@ class CubeMetadata:
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
-                f"{self.config.api_url}/meta",
-                headers=self.config.get_headers()
+                f"{self.config.api_url}/meta", headers=self.config.get_headers()
             )
             response.raise_for_status()
             data = response.json()
@@ -64,7 +63,7 @@ class CubeMetadata:
                         schema_description += f": {dim_desc[:100]}"
                     schema_description += "\n"
                 if len(dimensions) > 10:
-                    schema_description += f"  ... and {len(dimensions) - 10} more\n"
+                    schema_description += f"  ... and {len(dimensions) - 10} " "more\n"
 
             # Measures
             measures = cube.get("measures", [])
@@ -82,7 +81,7 @@ class CubeMetadata:
             # Joins (relationships)
             joins = cube.get("joins", [])
             if joins:
-                schema_description += f"\n**Related Cubes:** "
+                schema_description += "\n**Related Cubes:** "
                 schema_description += ", ".join([j.get("name") for j in joins[:5]])
                 if len(joins) > 5:
                     schema_description += f" ... and {len(joins) - 5} more"
@@ -98,14 +97,16 @@ class CubeMetadata:
         summary = []
 
         for cube in cubes:
-            summary.append({
-                "name": cube.get("name"),
-                "title": cube.get("title"),
-                "description": cube.get("description", "")[:200],
-                "dimensions": [d["name"] for d in cube.get("dimensions", [])],
-                "measures": [m["name"] for m in cube.get("measures", [])],
-                "joins": [j["name"] for j in cube.get("joins", [])],
-            })
+            summary.append(
+                {
+                    "name": cube.get("name"),
+                    "title": cube.get("title"),
+                    "description": cube.get("description", "")[:200],
+                    "dimensions": [d["name"] for d in cube.get("dimensions", [])],
+                    "measures": [m["name"] for m in cube.get("measures", [])],
+                    "joins": [j["name"] for j in cube.get("joins", [])],
+                }
+            )
 
         return summary
 

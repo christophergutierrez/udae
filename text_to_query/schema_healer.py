@@ -38,14 +38,17 @@ class SchemaHealer:
             cubes_directory: Path to the directory containing cube schema files
         """
         if cubes_directory is None:
-            # Default to cube_project/schema directory (used by Cube.js Docker)
+            # Default to cube_project/schema directory
+            # (used by Cube.js Docker)
             cubes_directory = Path(__file__).parent.parent / "cube_project" / "schema"
         self.cubes_dir = Path(cubes_directory)
 
         if not self.cubes_dir.exists():
             logger.warning(f"Cubes directory not found: {self.cubes_dir}")
 
-    def parse_missing_measure_error(self, error_message: str) -> Optional[Dict[str, str]]:
+    def parse_missing_measure_error(
+        self, error_message: str
+    ) -> Optional[Dict[str, str]]:
         """
         Parse a Cube.js error to extract missing measure information.
 
@@ -67,7 +70,7 @@ class SchemaHealer:
             return {
                 "cube": cube_name,
                 "measure": measure_name,
-                "full_path": f"{cube_name}.{path_measure}"
+                "full_path": f"{cube_name}.{path_measure}",
             }
 
         return None
@@ -93,7 +96,7 @@ class SchemaHealer:
             return {
                 "from_cube": from_cube,
                 "to_cube": to_cube,
-                "error_type": "missing_join_path"
+                "error_type": "missing_join_path",
             }
 
         return None
@@ -117,7 +120,9 @@ class SchemaHealer:
         """Read the contents of a cube file."""
         return cube_file.read_text()
 
-    def add_measure_to_cube(self, cube_content: str, measure_name: str) -> Optional[str]:
+    def add_measure_to_cube(
+        self, cube_content: str, measure_name: str
+    ) -> Optional[str]:
         """
         Add a measure to a cube schema.
 
@@ -136,48 +141,53 @@ class SchemaHealer:
         measure_def = self.COMMON_MEASURES[measure_name]
 
         # Check if measures section exists
-        measures_pattern = r'measures:\s*{([^}]*)}'
+        measures_pattern = r"measures:\s*{([^}]*)}"
         measures_match = re.search(measures_pattern, cube_content, re.DOTALL)
 
         if measures_match:
             # Measures section exists, add to it
-            return self._add_to_existing_measures(cube_content, measure_name, measure_def)
+            return self._add_to_existing_measures(
+                cube_content, measure_name, measure_def
+            )
         else:
             # No measures section, create one
-            return self._create_measures_section(cube_content, measure_name, measure_def)
+            return self._create_measures_section(
+                cube_content, measure_name, measure_def
+            )
 
-    def _add_to_existing_measures(self, content: str, measure_name: str, measure_def: Dict) -> str:
+    def _add_to_existing_measures(
+        self, content: str, measure_name: str, measure_def: Dict
+    ) -> str:
         """Add a measure to an existing measures section."""
         # Find the measures section
-        measures_pattern = r'(measures:\s*{)'
+        measures_pattern = r"(measures:\s*{)"
 
         # Build the measure definition
         measure_js = self._format_measure(measure_name, measure_def, indent=4)
 
         # Insert after "measures: {"
         updated = re.sub(
-            measures_pattern,
-            r'\1\n' + measure_js + ',\n',
-            content,
-            count=1
+            measures_pattern, r"\1\n" + measure_js + ",\n", content, count=1
         )
 
         return updated
 
-    def _create_measures_section(self, content: str, measure_name: str, measure_def: Dict) -> str:
+    def _create_measures_section(
+        self, content: str, measure_name: str, measure_def: Dict
+    ) -> str:
         """Create a new measures section in the cube."""
         measure_js = self._format_measure(measure_name, measure_def, indent=4)
         measures_section = f"\n  measures: {{\n{measure_js},\n  }},"
 
         # Find "dimensions: {" and then find its matching closing brace
-        dims_start = content.find('dimensions: {')
+        dims_start = content.find("dimensions: {")
         if dims_start == -1:
             # No dimensions section, insert before final closing
-            pattern = r'(\n}\);)\s*$'
-            return re.sub(pattern, measures_section + r'\n\1', content)
+            pattern = r"(\n}\);)\s*$"
+            return re.sub(pattern, measures_section + r"\n\1", content)
 
         # Start from after "dimensions: {"
-        pos = dims_start + len('dimensions: {')
+        pos = dims_start + len("dimensions: {")
         brace_count = 1
         in_string = False
         string_char = None
@@ -187,7 +197,7 @@ class SchemaHealer:
             char = content[pos]
 
             # Handle strings
-            if char in ('"', "'", '`') and (pos == 0 or content[pos-1] != '\\'):
+            if char in ('"', "'", "`") and (pos == 0 or content[pos - 1] != "\\"):
                 if not in_string:
                     in_string = True
                     string_char = char
@@ -197,9 +207,9 @@ class SchemaHealer:
 
             # Count braces only outside strings
             if not in_string:
-                if char == '{':
+                if char == "{":
                     brace_count += 1
-                elif char == '}':
+                elif char == "}":
                     brace_count -= 1
 
             pos += 1
@@ -209,21 +219,21 @@ class SchemaHealer:
             # pos is now right after the closing brace
             # Look for the comma after the closing brace
             insert_pos = pos
-            while insert_pos < len(content) and content[insert_pos] in ' \t\n':
+            while insert_pos < len(content) and content[insert_pos] in " \t\n":
                 insert_pos += 1
-            if insert_pos < len(content) and content[insert_pos] == ',':
+            if insert_pos < len(content) and content[insert_pos] == ",":
                 insert_pos += 1
 
             # Insert the measures section
             return content[:insert_pos] + measures_section + content[insert_pos:]
 
         # Fallback if we couldn't parse properly
-        pattern = r'(\n}\);)\s*$'
-        return re.sub(pattern, measures_section + r'\n\1', content)
+        pattern = r"(\n}\);)\s*$"
+        return re.sub(pattern, measures_section + r"\n\1", content)
 
     def _format_measure(self, name: str, definition: Dict, indent: int = 4) -> str:
         """Format a measure definition as JavaScript."""
-        spaces = ' ' * indent
+        spaces = " " * indent
         lines = [f"{spaces}{name}: {{"]
 
         for key, value in definition.items():
@@ -233,7 +243,7 @@ class SchemaHealer:
                 lines.append(f"{spaces}  {key}: {str(value).lower()},")
 
         lines.append(f"{spaces}}}")
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def write_cube_file(self, cube_file: Path, content: str):
         """Write updated content back to a cube file."""
@@ -257,10 +267,7 @@ class SchemaHealer:
                 "message": str
             }
         """
-        result = {
-            "healed": False,
-            "message": "No healing attempted"
-        }
+        result = {"healed": False, "message": "No healing attempted"}
 
         # Parse the error
         parsed = self.parse_missing_measure_error(error_message)

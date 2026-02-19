@@ -13,10 +13,7 @@ load_dotenv()
 OM_URL = os.getenv("OM_URL", "http://localhost:8585/api")
 OM_TOKEN = os.getenv("OM_TOKEN")
 
-HEADERS = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
 
 print("🗑️  Deleting All Pagila Ingestion Pipelines")
 print("=" * 60)
@@ -32,7 +29,9 @@ if response.status_code != 200:
     sys.exit(1)
 
 pipelines = response.json().get("data", [])
-pagila_pipelines = [p for p in pipelines if "pagila" in p.get("service", {}).get("name", "").lower()]
+pagila_pipelines = [
+    p for p in pipelines if "pagila" in p.get("service", {}).get("name", "").lower()
+]
 
 if not pagila_pipelines:
     print("✅ No pagila pipelines found to delete")
@@ -45,12 +44,14 @@ for pipeline in pagila_pipelines:
 print()
 
 for pipeline in pagila_pipelines:
-    pipeline_id = pipeline['id']
-    pipeline_name = pipeline['name']
+    pipeline_id = pipeline["id"]
+    pipeline_name = pipeline["name"]
 
     print(f"Deleting: {pipeline_name}...")
-    delete_url = f"{OM_URL}/v1/services/ingestionPipelines/{pipeline_id}"
-    response = requests.delete(delete_url, headers=HEADERS, params={"hardDelete": "true"})
+    delete_url = f"{OM_URL}/v1/services/ingestionPipelines/" f"{pipeline_id}"
+    response = requests.delete(
+        delete_url, headers=HEADERS, params={"hardDelete": "true"}
+    )
 
     if response.status_code in [200, 204]:
         print(f"  ✅ Deleted {pipeline_name}")

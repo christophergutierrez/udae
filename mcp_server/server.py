@@ -65,7 +65,8 @@ async def _execute_with_fixing(
                         "error": retry["error"],
                         "fix_attempted": True,
                         "fix_explanation": (
-                            f"Tried to fix but corrected query also failed: {fix_result['explanation']}"
+                            "Tried to fix but corrected query also failed: "
+                            f"{fix_result['explanation']}"
                         ),
                     }
                 return {
@@ -78,7 +79,9 @@ async def _execute_with_fixing(
             return {
                 "success": False,
                 "error": validation["message"],
-                "suggestion": schema_validator.format_validation_error(validation),
+                "suggestion": schema_validator.format_validation_error(
+                    validation
+                ),
                 "query": query,
             }
 
@@ -102,7 +105,8 @@ async def _execute_with_fixing(
                 return retry
             result["fix_attempted"] = True
             result["fix_explanation"] = (
-                f"Tried to fix but corrected query also failed: {fix_result['explanation']}"
+                "Tried to fix but corrected query also failed: "
+                f"{fix_result['explanation']}"
             )
             return result
         result["fix_attempted"] = True
@@ -116,7 +120,7 @@ async def _execute_with_fixing(
         result["suggestion"] = (
             f"Missing measure: '{parsed['measure']}' doesn't exist in the "
             f"{parsed['cube']} cube. Run './scripts/reset_cube.sh' after "
-            f"updating your OpenMetadata schema."
+            "updating your OpenMetadata schema."
         )
         return result
 
@@ -126,7 +130,7 @@ async def _execute_with_fixing(
         result["suggestion"] = (
             f"Missing join: No relationship exists between {join_error['from_cube']} "
             f"and {join_error['to_cube']}. Try querying them separately, or add the "
-            f"relationship in OpenMetadata."
+            "relationship in OpenMetadata."
         )
         return result
 
@@ -210,7 +214,8 @@ async def execute_cube_query(cube_query: dict[str, Any]) -> dict[str, Any]:
     """Execute a raw Cube.js JSON query directly.
 
     Args:
-        cube_query: A valid Cube.js query object with measures, dimensions, filters, etc.
+        cube_query: A valid Cube.js query object with measures, dimensions,
+                    filters, etc.
 
     Returns:
         Dict with data, count, and sql on success.
@@ -254,7 +259,8 @@ async def refine_query(
         execute: If True, execute the refined query and return results.
 
     Returns:
-        Dict with the refined query, and optionally results/count/sql when executed.
+        Dict with the refined query, and optionally results/count/sql when
+        executed.
     """
     schema_context = await cube_metadata.get_schema_for_llm()
     result = await query_generator.refine_query(

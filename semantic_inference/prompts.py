@@ -3,7 +3,6 @@
 import json
 from typing import Any
 
-
 SYSTEM_PROMPT = """You are a data catalog analyst generating metadata for a business data dictionary.
 
 For each table provided, generate:
@@ -13,7 +12,8 @@ For each table provided, generate:
 4. A semantic type per column (ID, NAME, AMOUNT, QUANTITY, DATE, FLAG, CATEGORY, REFERENCE, METRIC, TEXT, OTHER)
 5. Table classification (DIMENSION, FACT, TRANSACTION, MASTER, LOOKUP, STAGING, or UNKNOWN)
 
-Use the profiler statistics, sample data, column names, types, constraints, and foreign key
+Use the profiler statistics, sample data, column names, types, constraints, 
+and foreign key
 relationships to inform your descriptions. Be specific and business-oriented.
 
 IMPORTANT:
@@ -40,7 +40,9 @@ Respond ONLY with valid JSON matching this schema:
 }"""
 
 
-def build_table_context(table: dict[str, Any], sample_data: dict[str, Any] | None = None) -> str:
+def build_table_context(
+    table: dict[str, Any], sample_data: dict[str, Any] | None = None
+) -> str:
     """
     Build a structured text representation of a table for the LLM prompt.
 
@@ -59,7 +61,9 @@ def build_table_context(table: dict[str, Any], sample_data: dict[str, Any] | Non
     lines.append(f"Table: {fqn}")
     lines.append(f"Table Type: {table.get('tableType', 'REGULAR')}")
     lines.append(f"Row Count: {profile.get('rowCount', 'unknown')}")
-    lines.append(f"Column Count: {profile.get('columnCount', len(table.get('columns', [])))}")
+    lines.append(
+        f"Column Count: {profile.get('columnCount', len(table.get('columns', [])))}"
+    )
 
     if table.get("description"):
         lines.append(f"Existing Description: {table['description']}")
@@ -73,7 +77,10 @@ def build_table_context(table: dict[str, Any], sample_data: dict[str, Any] | Non
             cols = constraint.get("columns", [])
             ref = constraint.get("referredColumns", [])
             if ref:
-                ref_fqns = [r.get("fullyQualifiedName", "") if isinstance(r, dict) else str(r) for r in ref]
+                ref_fqns = [
+                    r.get("fullyQualifiedName", "") if isinstance(r, dict) else str(r)
+                    for r in ref
+                ]
                 lines.append(f"  {ctype}: {cols} -> {ref_fqns}")
             else:
                 lines.append(f"  {ctype}: {cols}")
@@ -131,7 +138,9 @@ def _format_column_info(col: dict[str, Any]) -> str:
         frequencies = histogram.get("frequencies", [])
         if boundaries and frequencies:
             # Show top values (helpful for understanding categorical data)
-            top_values = ", ".join(f"{b}: {f}" for b, f in zip(boundaries[:5], frequencies[:5]))
+            top_values = ", ".join(
+                f"{b}: {f}" for b, f in zip(boundaries[:5], frequencies[:5])
+            )
             stats.append(f"values=[{top_values}]")
 
     # Combine parts

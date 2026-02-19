@@ -76,7 +76,8 @@ Examples:
     # OpenMetadata settings
     parser.add_argument(
         "--om-url",
-        help="OpenMetadata API URL (default: from .env or http://localhost:8585/api)",
+        help="OpenMetadata API URL (default: from .env or "
+        "http://localhost:8585/api)",
     )
     parser.add_argument(
         "--om-token",
@@ -136,6 +137,7 @@ Examples:
         # Handle om_url default
         if not args.om_url:
             import os
+
             args.om_url = os.getenv("OM_URL", "http://localhost:8585/api")
 
         config = SemanticLayerConfig.from_args(args)
@@ -156,7 +158,9 @@ Examples:
         pipeline = SemanticLayerPipeline(config)
         results = pipeline.run()
 
-        log.info("\n✅ Success! Generated Cube.js schemas in: %s", results["output_dir"])
+        log.info(
+            "\n✅ Success! Generated Cube.js schemas in: %s", results["output_dir"]
+        )
         log.info("\nNext steps:")
         log.info("  1. Review generated files in %s", results["output_dir"])
         log.info("  2. Copy files to your Cube.js project's schema/ directory")

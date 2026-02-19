@@ -10,7 +10,6 @@ This script is kept for re-running ingestion on an already-configured system.
 
 import os
 import sys
-import json
 import requests
 from dotenv import load_dotenv
 
@@ -24,10 +23,8 @@ if not OM_TOKEN:
     print("❌ Error: OM_TOKEN not set in .env file")
     sys.exit(1)
 
-HEADERS = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
+
 
 def get_service_id(service_name="pagila"):
     """Get the service ID for the database service"""
@@ -38,22 +35,20 @@ def get_service_id(service_name="pagila"):
 
     if response.status_code != 200:
         print(f"❌ Service '{service_name}' not found")
-        print(f"   Please add the Pagila database service first via the UI")
+        print("   Please add the Pagila database service first via the UI")
         sys.exit(1)
 
     service = response.json()
     print(f"✅ Found service: {service['id']}")
-    return service['id']
+    return service["id"]
+
 
 def delete_existing_pipelines(service_id, pipeline_type="metadata"):
     """Delete existing pipelines"""
     print(f"🗑️  Checking for existing {pipeline_type} pipelines...")
 
     url = f"{OM_URL}/v1/services/ingestionPipelines"
-    params = {
-        "service": service_id,
-        "pipelineType": pipeline_type
-    }
+    params = {"service": service_id, "pipelineType": pipeline_type}
 
     response = requests.get(url, headers=HEADERS, params=params)
 
@@ -61,13 +56,14 @@ def delete_existing_pipelines(service_id, pipeline_type="metadata"):
         pipelines = response.json().get("data", [])
         for pipeline in pipelines:
             print(f"   Deleting: {pipeline['name']}")
-            delete_url = f"{OM_URL}/v1/services/ingestionPipelines/{pipeline['id']}"
+            delete_url = f"{OM_URL}/v1/services/ingestionPipelines/" f"{pipeline['id']}"
             requests.delete(delete_url, headers=HEADERS, params={"hardDelete": "true"})
 
         if pipelines:
             print(f"✅ Deleted {len(pipelines)} existing pipeline(s)")
     else:
         print("⏭️  No existing pipelines found")
+
 
 def create_metadata_ingestion(service_id):
     """Create metadata ingestion pipeline"""
@@ -77,10 +73,7 @@ def create_metadata_ingestion(service_id):
         "name": "pagila_metadata",
         "displayName": "Pagila Metadata Ingestion",
         "pipelineType": "metadata",
-        "service": {
-            "id": service_id,
-            "type": "databaseService"
-        },
+        "service": {"id": service_id, "type": "databaseService"},
         "sourceConfig": {
             "config": {
                 "type": "DatabaseMetadata",
@@ -89,23 +82,12 @@ def create_metadata_ingestion(service_id):
                 "includeTables": True,
                 "includeViews": True,
                 "includeTags": True,
-                "databaseFilterPattern": {
-                    "includes": ["pagila"],
-                    "excludes": []
-                },
-                "schemaFilterPattern": {
-                    "includes": ["public"],
-                    "excludes": []
-                },
-                "tableFilterPattern": {
-                    "includes": [],
-                    "excludes": []
-                }
+                "databaseFilterPattern": {"includes": ["pagila"], "excludes": []},
+                "schemaFilterPattern": {"includes": ["public"], "excludes": []},
+                "tableFilterPattern": {"includes": [], "excludes": []},
             }
         },
-        "airflowConfig": {
-            "scheduleInterval": "0 0 * * *"  # Daily at midnight
-        }
+        "airflowConfig": {"scheduleInterval": "0 0 * * *"},  # Daily at midnight
     }
 
     url = f"{OM_URL}/v1/services/ingestionPipelines"
@@ -114,11 +96,12 @@ def create_metadata_ingestion(service_id):
     if response.status_code in [200, 201]:
         pipeline = response.json()
         print(f"✅ Created metadata ingestion: {pipeline['id']}")
-        return pipeline['id']
+        return pipeline["id"]
     else:
         print(f"❌ Failed to create metadata ingestion: {response.status_code}")
         print(f"   Response: {response.text}")
         sys.exit(1)
+
 
 def trigger_pipeline(pipeline_id):
     """Trigger the pipeline to run.
@@ -137,10 +120,18 @@ def trigger_pipeline(pipeline_id):
         print("   This will take 1-2 minutes...")
         return True
     else:
-        print(f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)")
-        print("   The pipeline may still run. Check Airflow at http://localhost:8080")
-        print("   Login: admin/admin → DAG: pagila_metadata → trigger manually if needed")
+        print(
+            f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)"
+        )
+        print(
+            "   The pipeline may still run. Check Airflow at " "http://localhost:8080"
+        )
+        print(
+            "   Login: admin/admin → DAG: pagila_metadata → trigger manually "
+            "if needed"
+        )
         return False
+
 
 def main():
     print("🔧 OpenMetadata Metadata Ingestion Setup")
@@ -177,6 +168,7 @@ def main():
     print("  - You can browse tables in the UI")
     print("  - Then run the profiler")
     print("  - Then run semantic inference")
+
 
 if __name__ == "__main__":
     main()

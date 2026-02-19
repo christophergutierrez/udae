@@ -69,11 +69,13 @@ class InferencePipeline:
                 self._process_table(table, table_id)
             except Exception as e:
                 log.error(f"  Failed to process table: {e}")
-                self.errors.append({
-                    "table": fqn,
-                    "error": str(e),
-                    "phase": "process",
-                })
+                self.errors.append(
+                    {
+                        "table": fqn,
+                        "error": str(e),
+                        "phase": "process",
+                    }
+                )
 
             # Rate limiting between tables
             time.sleep(self.config.llm.batch_delay_seconds)
@@ -96,7 +98,8 @@ class InferencePipeline:
     def _filter_tables(self, tables: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Filter out tables that should be skipped."""
         return [
-            t for t in tables
+            t
+            for t in tables
             if not any(skip in t.get("name", "") for skip in self.config.skip_tables)
         ]
 
@@ -123,7 +126,10 @@ class InferencePipeline:
 
         # Step 2: Build context and call LLM
         context = build_table_context(detail, sample_data)
-        log.info(f"  Context: {len(context)} chars, {len(detail.get('columns', []))} columns")
+        log.info(
+            f"  Context: {len(context)} chars, "
+            f"{len(detail.get('columns', []))} columns"
+        )
 
         if self.config.dry_run:
             log.info("  [DRY RUN] Would send to LLM:")
@@ -196,7 +202,9 @@ class InferencePipeline:
             col_desc = col_inf.get("description", "")
             if col_desc:
                 try:
-                    self.om_client.update_column_description(table_id, col_idx, col_desc)
+                    self.om_client.update_column_description(
+                        table_id, col_idx, col_desc
+                    )
                     updated_cols += 1
                 except requests.HTTPError as e:
                     log.warning(f"  Failed to update column {col_name}: {e}")
@@ -214,13 +222,15 @@ class InferencePipeline:
         log.info(f"  Updated {updated_cols}/{len(columns)} column descriptions")
 
         # Record success
-        self.results.append({
-            "table": fqn,
-            "status": "success",
-            "table_type": inference.get("table_type"),
-            "pii_risk": inference.get("pii_risk"),
-            "columns_updated": updated_cols,
-        })
+        self.results.append(
+            {
+                "table": fqn,
+                "status": "success",
+                "table_type": inference.get("table_type"),
+                "pii_risk": inference.get("pii_risk"),
+                "columns_updated": updated_cols,
+            }
+        )
 
     def _generate_summary(self) -> dict[str, Any]:
         """Generate and log summary statistics."""

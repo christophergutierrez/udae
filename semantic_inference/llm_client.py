@@ -30,7 +30,8 @@ class LLMClient:
 
         Args:
             api_key: API key or auth token
-            base_url: Base URL for API (supports both with and without /v1 suffix)
+            base_url: Base URL for API (supports both with and without /v1
+                      suffix)
             model: Model identifier
             temperature: Sampling temperature
             max_tokens: Maximum tokens in response
@@ -83,7 +84,8 @@ class LLMClient:
 
         Args:
             user_message: User message content
-            system_prompt: Optional system prompt (will be prepended to user message if proxy doesn't support it)
+            system_prompt: Optional system prompt (will be prepended to user
+                           message if proxy doesn't support it)
 
         Returns:
             Parsed JSON response from the LLM
@@ -111,7 +113,9 @@ class LLMClient:
         response = self.client.post(url, json=payload, headers=headers)
 
         if response.status_code != 200:
-            log.error(f"LLM API error: HTTP {response.status_code}: {response.text}")
+            log.error(
+                f"LLM API error: HTTP {response.status_code}: " f"{response.text}"
+            )
             response.raise_for_status()
 
         data = response.json()

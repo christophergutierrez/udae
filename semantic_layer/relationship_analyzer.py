@@ -28,7 +28,10 @@ class TableInfo:
     @property
     def is_fact(self) -> bool:
         """Check if this appears to be a fact table."""
-        return "FACT" in self.semantic_type.upper() or "TRANSACTION" in self.semantic_type.upper()
+        return (
+            "FACT" in self.semantic_type.upper()
+            or "TRANSACTION" in self.semantic_type.upper()
+        )
 
     @property
     def is_dimension(self) -> bool:
@@ -104,7 +107,9 @@ class RelationshipAnalyzer:
                 if constraint.get("constraintType") == "FOREIGN_KEY":
                     self._add_foreign_key_relationship(table_info, constraint)
 
-    def _add_foreign_key_relationship(self, table_info: TableInfo, constraint: dict[str, Any]):
+    def _add_foreign_key_relationship(
+        self, table_info: TableInfo, constraint: dict[str, Any]
+    ):
         """Add a relationship from a foreign key constraint."""
         from_cols = constraint.get("columns", [])
         referred_cols = constraint.get("referredColumns", [])
@@ -117,7 +122,9 @@ class RelationshipAnalyzer:
             if isinstance(ref_col_data, str):
                 # Legacy format: just the column name as string
                 ref_fqn = ref_col_data
-                ref_column = ref_col_data.split(".")[-1] if "." in ref_col_data else ref_col_data
+                ref_column = (
+                    ref_col_data.split(".")[-1] if "." in ref_col_data else ref_col_data
+                )
             elif isinstance(ref_col_data, dict):
                 # Standard format: dict with fullyQualifiedName
                 ref_fqn = ref_col_data.get("fullyQualifiedName", "")
@@ -155,7 +162,9 @@ class RelationshipAnalyzer:
                 f"FK: {table_info.name}.{from_col} -> {ref_table}.{ref_column} ({relationship_type})"
             )
 
-    def _infer_relationship_type(self, from_table: TableInfo, to_table_name: str) -> str:
+    def _infer_relationship_type(
+        self, from_table: TableInfo, to_table_name: str
+    ) -> str:
         """
         Infer relationship type (belongsTo, hasMany, hasOne).
 
@@ -204,7 +213,9 @@ class RelationshipAnalyzer:
                     # Infer the primary key column name
                     to_col = self._infer_pk_column(self.tables[table_name])
 
-                    relationship_type = self._infer_relationship_type(from_table, table_name)
+                    relationship_type = self._infer_relationship_type(
+                        from_table, table_name
+                    )
 
                     self.relationships.append(
                         Relationship(
@@ -250,7 +261,9 @@ class RelationshipAnalyzer:
 
         # Summary
         lines.append(f"Total Tables: {len(self.tables)}")
-        lines.append(f"Fact Tables: {sum(1 for t in self.tables.values() if t.is_fact)}")
+        lines.append(
+            f"Fact Tables: {sum(1 for t in self.tables.values() if t.is_fact)}"
+        )
         lines.append(
             f"Dimension Tables: {sum(1 for t in self.tables.values() if t.is_dimension)}"
         )
@@ -258,7 +271,9 @@ class RelationshipAnalyzer:
 
         # Tables
         lines.append("## Tables\n")
-        for table in sorted(self.tables.values(), key=lambda t: (not t.is_fact, t.name)):
+        for table in sorted(
+            self.tables.values(), key=lambda t: (not t.is_fact, t.name)
+        ):
             lines.append(f"### {table.name} ({table.semantic_type})")
             lines.append(f"Rows: {table.row_count:,}")
             lines.append(f"Description: {table.description or 'N/A'}")
@@ -287,7 +302,9 @@ class RelationshipAnalyzer:
         return {
             "total_tables": len(self.tables),
             "fact_tables": [t.name for t in self.tables.values() if t.is_fact],
-            "dimension_tables": [t.name for t in self.tables.values() if t.is_dimension],
+            "dimension_tables": [
+                t.name for t in self.tables.values() if t.is_dimension
+            ],
             "relationships": [
                 {
                     "from": f"{r.from_table}.{r.from_column}",

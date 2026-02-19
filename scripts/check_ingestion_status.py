@@ -13,10 +13,7 @@ load_dotenv()
 OM_URL = os.getenv("OM_URL", "http://localhost:8585/api")
 OM_TOKEN = os.getenv("OM_TOKEN")
 
-HEADERS = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
 
 print("🔍 Checking Metadata Ingestion Status")
 print("=" * 60)
@@ -31,7 +28,7 @@ if response.status_code != 200:
     sys.exit(1)
 
 service = response.json()
-service_id = service['id']
+service_id = service["id"]
 print(f"✅ Found pagila service: {service_id}")
 print()
 
@@ -52,20 +49,22 @@ if response.status_code == 200:
         print()
 
         # Get pipeline runs
-        pipeline_id = pipeline['id']
-        runs_url = f"{OM_URL}/v1/services/ingestionPipelines/{pipeline_id}/pipelineStatus"
+        pipeline_id = pipeline["id"]
+        runs_url = (
+            f"{OM_URL}/v1/services/ingestionPipelines/{pipeline_id}" "/pipelineStatus"
+        )
         runs_response = requests.get(runs_url, headers=HEADERS)
 
         if runs_response.status_code == 200:
             runs = runs_response.json().get("data", [])
             print(f"  Last {min(3, len(runs))} run(s):")
             for run in runs[:3]:
-                status = run.get('pipelineState', 'unknown')
-                start = run.get('startDate', 'N/A')
-                end = run.get('endDate', 'N/A')
+                status = run.get("pipelineState", "unknown")
+                start = run.get("startDate", "N/A")
+                end = run.get("endDate", "N/A")
                 print(f"    - {status} | Started: {start}")
-                if status == 'failed':
-                    print(f"      Error: {run.get('error', 'No error message')}")
+                if status == "failed":
+                    print("      Error: " f"{run.get('error', 'No error message')}")
         print()
 else:
     print(f"❌ Could not list pipelines: {response.status_code}")

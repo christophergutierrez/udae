@@ -32,10 +32,14 @@ class LLMConfig:
         """Auto-detect auth settings from environment if not explicitly set."""
         if self.api_key is None:
             # Try AUTH_TOKEN first (proxy style), then API_KEY (standard)
-            self.api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")
+            self.api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get(
+                "ANTHROPIC_API_KEY"
+            )
 
         if self.base_url is None:
-            self.base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+            self.base_url = os.environ.get(
+                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
+            )
 
     @property
     def is_proxy(self) -> bool:

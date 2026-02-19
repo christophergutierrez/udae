@@ -10,7 +10,6 @@ from typing import Dict, Any, Optional
 
 from .config import LLMConfig
 
-
 SYSTEM_PROMPT = """You are an expert at converting natural language questions into Cube.js query JSON.
 
 Cube.js Query Format:
@@ -62,7 +61,7 @@ class QueryGenerator:
         self,
         question: str,
         schema_context: str,
-        conversation_history: Optional[list] = None
+        conversation_history: Optional[list] = None,
     ) -> Dict[str, Any]:
         """
         Generate a Cube.js query from a natural language question.
@@ -91,9 +90,7 @@ class QueryGenerator:
                         "model": self.config.model,
                         "max_tokens": self.config.max_tokens,
                         "temperature": self.config.temperature,
-                        "messages": [
-                            {"role": "user", "content": user_prompt}
-                        ],
+                        "messages": [{"role": "user", "content": user_prompt}],
                     },
                 )
                 response.raise_for_status()
@@ -114,38 +111,31 @@ class QueryGenerator:
 
                     # Validate query structure
                     if "error" in query:
-                        return {
-                            "error": query["error"],
-                            "raw_response": content
-                        }
+                        return {"error": query["error"], "raw_response": content}
 
                     return {
                         "query": query,
                         "raw_response": content,
-                        "model": self.config.model
+                        "model": self.config.model,
                     }
 
                 except json.JSONDecodeError as e:
                     return {
                         "error": f"Failed to parse LLM response as JSON: {str(e)}",
-                        "raw_response": content
+                        "raw_response": content,
                     }
 
             except httpx.HTTPError as e:
-                return {
-                    "error": f"HTTP error communicating with LLM: {str(e)}"
-                }
+                return {"error": f"HTTP error communicating with LLM: {str(e)}"}
             except Exception as e:
-                return {
-                    "error": f"Unexpected error: {str(e)}"
-                }
+                return {"error": f"Unexpected error: {str(e)}"}
 
     async def refine_query(
         self,
         original_question: str,
         original_query: Dict,
         feedback: str,
-        schema_context: str
+        schema_context: str,
     ) -> Dict[str, Any]:
         """
         Refine a query based on user feedback.
@@ -175,9 +165,7 @@ class QueryGenerator:
                         "model": self.config.model,
                         "max_tokens": self.config.max_tokens,
                         "temperature": self.config.temperature,
-                        "messages": [
-                            {"role": "user", "content": user_prompt}
-                        ],
+                        "messages": [{"role": "user", "content": user_prompt}],
                     },
                 )
                 response.raise_for_status()
@@ -194,18 +182,13 @@ class QueryGenerator:
                 query = json.loads(content)
 
                 if "error" in query:
-                    return {
-                        "error": query["error"],
-                        "raw_response": content
-                    }
+                    return {"error": query["error"], "raw_response": content}
 
                 return {
                     "query": query,
                     "raw_response": content,
-                    "model": self.config.model
+                    "model": self.config.model,
                 }
 
             except Exception as e:
-                return {
-                    "error": f"Failed to refine query: {str(e)}"
-                }
+                return {"error": f"Failed to refine query: {str(e)}"}

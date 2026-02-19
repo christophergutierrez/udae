@@ -90,7 +90,8 @@ class RelationshipInferenceEngine:
             schema_context: Structured text describing the schema
 
         Returns:
-            Dictionary with additional_relationships, common_join_paths, suggested_metrics
+            Dictionary with additional_relationships, common_join_paths,
+            suggested_metrics
         """
         log.info("Sending schema to LLM for relationship inference...")
 
@@ -111,7 +112,8 @@ class RelationshipInferenceEngine:
             result.setdefault("suggested_metrics", [])
 
             log.info(
-                f"LLM inferred {len(result['additional_relationships'])} additional relationships"
+                f"LLM inferred {len(result['additional_relationships'])} "
+                "additional relationships"
             )
             log.info(f"LLM suggested {len(result['common_join_paths'])} join paths")
             log.info(f"LLM suggested {len(result['suggested_metrics'])} metrics")
@@ -152,7 +154,13 @@ class RelationshipInferenceEngine:
             # Check required fields
             if not all(
                 k in rel
-                for k in ["from_table", "from_column", "to_table", "to_column", "relationship_type"]
+                for k in [
+                    "from_table",
+                    "from_column",
+                    "to_table",
+                    "to_column",
+                    "relationship_type",
+                ]
             ):
                 log.warning(f"Skipping incomplete relationship: {rel}")
                 continue

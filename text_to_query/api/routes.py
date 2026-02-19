@@ -13,10 +13,11 @@ from ..query_fixer import QueryFixer
 from ..services.query_service import execute_query_with_fixing
 
 logger = logging.getLogger(__name__)
-api_bp = Blueprint('api', __name__, url_prefix='/api')
+api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 # Initialize components
-# In a larger app, these would be injected via a dependency injection framework
+# In a larger app, these would be injected via a dependency injection
+# framework
 # or passed in from the app factory. For simplicity, we initialize them here.
 config = get_config()
 cube_metadata = CubeMetadata(config.cube)
@@ -25,52 +26,61 @@ query_executor = QueryExecutor(config.cube)
 query_fixer = QueryFixer(config.llm)
 
 
-@api_bp.route('/schema')
+@api_bp.route("/schema")
 async def get_schema():
     """Get available schema information."""
     try:
         metadata = await cube_metadata.fetch_metadata()
         summary = cube_metadata.get_cube_summary(metadata)
-        return jsonify({
-            "success": True,
-            "cubes": summary,
-            "count": len(summary)
-        })
+        return jsonify({"success": True, "cubes": summary, "count": len(summary)})
     except Exception as e:
         logger.error(f"Error fetching schema: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@api_bp.route('/query', methods=['POST'])
+@api_bp.route("/query", methods=["POST"])
 async def natural_language_query():
     """Convert natural language to query and execute."""
     try:
         data = request.json
-        question = data.get('question')
-        execute = data.get('execute', True)
+        question = data.get("question")
+        execute = data.get("execute", True)
 
         if not question:
-            return jsonify({"success": False, "error": "Missing 'question' parameter"}), 400
+            return (
+                jsonify({"success": False, "error": "Missing 'question' parameter"}),
+                400,
+            )
 
         schema_context = await cube_metadata.get_schema_for_llm()
         result = await query_generator.generate_query(question, schema_context)
 
         if "error" in result:
-            return jsonify({
-                "success": False,
-                "error": result["error"],
-                "raw_response": result.get("raw_response")
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": result["error"],
+                        "raw_response": result.get("raw_response"),
+                    }
+                ),
+                400,
+            )
 
         query = result["query"]
         validation = await query_executor.validate_query(query)
 
         if not validation.get("valid"):
-            return jsonify({
-                "success": False,
-                "error": f"Invalid query: {validation.get('error')}",
-                "query": query
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid query: {validation.get('error')}",
+                        "query": query,
+                    }
+                ),
+                400,
+            )
 
         if validation.get("cleaned"):
             query = validation["query"]
@@ -79,7 +89,7 @@ async def natural_language_query():
             "success": True,
             "question": question,
             "query": query,
-            "model": result.get("model")
+            "model": result.get("model"),
         }
 
         if execute:
@@ -88,7 +98,7 @@ async def natural_language_query():
                 query_executor=query_executor,
                 query_fixer=query_fixer,
                 question=question,
-                schema_context=schema_context
+                schema_context=schema_context,
             )
             response.update(execution_result)
             if not response["success"]:
@@ -101,29 +111,38 @@ async def natural_language_query():
         return jsonify({"success": False, "error": f"Server error: {str(e)}"}), 500
 
 
-@api_bp.route('/execute', methods=['POST'])
+@api_bp.route("/execute", methods=["POST"])
 async def execute_query():
     """Execute a Cube.js query directly."""
     try:
         data = request.json
-        query = data.get('query')
+        query = data.get("query")
 
         if not query:
-            return jsonify({"success": False, "error": "Missing 'query' parameter"}), 400
+            return (
+                jsonify({"success": False, "error": "Missing 'query' parameter"}),
+                400,
+            )
 
         validation = await query_executor.validate_query(query)
         if not validation.get("valid"):
-            return jsonify({"success": False, "error": f"Invalid query: {validation.get('error')}"}), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid query: {validation.get('error')}",
+                    }
+                ),
+                400,
+            )
 
         result = await execute_query_with_fixing(
-            query=query,
-            query_executor=query_executor,
-            query_fixer=query_fixer
+            query=query, query_executor=query_executor, query_fixer=query_fixer
         )
 
         if not result["success"]:
             return jsonify(result), 400
-        
+
         return jsonify(result)
 
     except Exception as e:
@@ -131,18 +150,21 @@ async def execute_query():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@api_bp.route('/refine', methods=['POST'])
+@api_bp.route("/refine", methods=["POST"])
 async def refine_query():
     """Refine a query based on feedback."""
     try:
         data = request.json
-        question = data.get('question')
-        original_query = data.get('query')
-        feedback = data.get('feedback')
-        execute = data.get('execute', True)
+        question = data.get("question")
+        original_query = data.get("query")
+        feedback = data.get("feedback")
+        execute = data.get("execute", True)
 
         if not all([question, original_query, feedback]):
-            return jsonify({"success": False, "error": "Missing required parameters"}), 400
+            return (
+                jsonify({"success": False, "error": "Missing required parameters"}),
+                400,
+            )
 
         schema_context = await cube_metadata.get_schema_for_llm()
         result = await query_generator.refine_query(
@@ -157,7 +179,7 @@ async def refine_query():
             "success": True,
             "question": question,
             "query": query,
-            "model": result.get("model")
+            "model": result.get("model"),
         }
 
         if execute:
@@ -166,7 +188,7 @@ async def refine_query():
                 query_executor=query_executor,
                 query_fixer=query_fixer,
                 question=question,
-                schema_context=schema_context
+                schema_context=schema_context,
             )
             response.update(execution_result)
             if not response["success"]:

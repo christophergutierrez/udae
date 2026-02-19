@@ -35,7 +35,10 @@ class SemanticLayerPipeline:
         self.config = config
 
         # Initialize clients
-        log.debug(f"Initializing OM client with token length: {len(config.openmetadata.token)}")
+        log.debug(
+            f"Initializing OM client with token length: "
+            f"{len(config.openmetadata.token)}"
+        )
         self.om_client = OpenMetadataClient(
             config.openmetadata.url,
             config.openmetadata.token,
@@ -76,7 +79,9 @@ class SemanticLayerPipeline:
         self.analyzer.analyze_foreign_keys()
         self.analyzer.analyze_naming_patterns()
 
-        log.info(f"Found {len(self.analyzer.relationships)} relationships from metadata")
+        log.info(
+            f"Found {len(self.analyzer.relationships)} relationships from metadata"
+        )
 
         # Step 3: Use LLM to infer additional relationships
         log.info("\nUsing LLM to infer additional relationships...")
@@ -103,7 +108,10 @@ class SemanticLayerPipeline:
                 )
             )
 
-        log.info(f"Total relationships (including LLM-inferred): {len(self.analyzer.relationships)}")
+        log.info(
+            f"Total relationships (including LLM-inferred): "
+            f"{len(self.analyzer.relationships)}"
+        )
 
         # Step 4: Generate Cube.js schemas
         log.info("\nGenerating Cube.js schemas...")
@@ -161,13 +169,21 @@ class SemanticLayerPipeline:
         log.info(f"Output directory: {self.config.output_dir}")
         log.info(f"Generated {len(generated_files)} Cube.js schema files")
         log.info(f"Total relationships: {len(self.analyzer.relationships)}")
-        log.info(f"  - From foreign keys: {sum(1 for r in self.analyzer.relationships if r.source == 'foreign_key')}")
-        log.info(f"  - From naming patterns: {sum(1 for r in self.analyzer.relationships if r.source == 'naming_pattern')}")
-        log.info(f"  - From LLM inference: {sum(1 for r in self.analyzer.relationships if r.source == 'llm_inference')}")
+        log.info(
+            f"  - From foreign keys: {sum(1 for r in self.analyzer.relationships if r.source == 'foreign_key')}"
+        )
+        log.info(
+            f"  - From naming patterns: {sum(1 for r in self.analyzer.relationships if r.source == 'naming_pattern')}"
+        )
+        log.info(
+            f"  - From LLM inference: {sum(1 for r in self.analyzer.relationships if r.source == 'llm_inference')}"
+        )
         log.info(f"Common join paths: {len(llm_result.get('common_join_paths', []))}")
         log.info(f"Suggested metrics: {len(llm_result.get('suggested_metrics', []))}")
         log.info("")
-        log.info(f"LLM tokens used: {self.llm_client.total_input_tokens:,} input, {self.llm_client.total_output_tokens:,} output")
+        log.info(
+            f"LLM tokens used: {self.llm_client.total_input_tokens:,} input, {self.llm_client.total_output_tokens:,} output"
+        )
 
         return {
             "output_dir": str(self.config.output_dir),

@@ -23,7 +23,7 @@ async def execute_query_with_fixing(
     query_executor: QueryExecutor,
     query_fixer: QueryFixer,
     question: str = "",
-    schema_context: str = ""
+    schema_context: str = "",
 ) -> Dict[str, Any]:
     """
     Execute a query with intelligent error fixing via LLM.
@@ -55,12 +55,14 @@ async def execute_query_with_fixing(
                     question=question,
                     failed_query=query,
                     error_message=validation["message"],
-                    schema_context=schema_context
+                    schema_context=schema_context,
                 )
 
                 if fix_result["fixed"]:
                     logger.info(f"LLM fixed the query: {fix_result['explanation']}")
-                    retry_result = await query_executor.execute_query(fix_result["query"])
+                    retry_result = await query_executor.execute_query(
+                        fix_result["query"]
+                    )
 
                     if retry_result["success"]:
                         retry_result["auto_fixed"] = True
@@ -73,7 +75,7 @@ async def execute_query_with_fixing(
                             "error": retry_result["error"],
                             "error_type": "invalid_join_path",
                             "fix_attempted": True,
-                            "fix_explanation": f"Tried to fix but corrected query also failed: {fix_result['explanation']}"
+                            "fix_explanation": f"Tried to fix but corrected query also failed: {fix_result['explanation']}",
                         }
                 else:
                     return {
@@ -82,7 +84,7 @@ async def execute_query_with_fixing(
                         "error_type": "invalid_join_path",
                         "fix_attempted": True,
                         "fix_explanation": fix_result["explanation"],
-                        "query": query
+                        "query": query,
                     }
             else:
                 return {
@@ -90,7 +92,7 @@ async def execute_query_with_fixing(
                     "error": validation["message"],
                     "error_type": "invalid_join_path",
                     "suggestion": schema_validator.format_validation_error(validation),
-                    "query": query
+                    "query": query,
                 }
 
         if validation.get("warning"):
@@ -111,7 +113,7 @@ async def execute_query_with_fixing(
             question=question,
             failed_query=query,
             error_message=error_msg,
-            schema_context=schema_context
+            schema_context=schema_context,
         )
 
         if fix_result["fixed"]:
@@ -125,7 +127,9 @@ async def execute_query_with_fixing(
                 return retry_result
             else:
                 result["fix_attempted"] = True
-                result["fix_explanation"] = f"Tried to fix but corrected query also failed: {fix_result['explanation']}"
+                result["fix_explanation"] = (
+                    f"Tried to fix but corrected query also failed: {fix_result['explanation']}"
+                )
                 return result
         else:
             result["fix_attempted"] = True

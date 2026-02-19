@@ -7,7 +7,6 @@ Copy this file and customize for your setup:
 
 from semantic_inference import InferenceConfig, LLMConfig, OpenMetadataConfig
 
-
 # Standard Anthropic API setup
 standard_config = InferenceConfig(
     service_name="my_database",

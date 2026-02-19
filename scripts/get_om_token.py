@@ -17,20 +17,29 @@ except ImportError:
 
 def get_encrypted_token():
     result = subprocess.run(
-        ["docker", "exec", "openmetadata_mysql",
-         "mysql", "-u", "openmetadata_user", "-popenmetadata_password",
-         "openmetadata_db", "-sNe",
-         "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.authenticationMechanism.config.JWTToken'))"
-         " FROM user_entity WHERE name='ingestion-bot' LIMIT 1;"],
-        capture_output=True, text=True
+        [
+            "docker",
+            "exec",
+            "openmetadata_mysql",
+            "mysql",
+            "-u",
+            "openmetadata_user",
+            "-popenmetadata_password",
+            "openmetadata_db",
+            "-sNe",
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, "
+            "'$.authenticationMechanism.config.JWTToken'))"
+            " FROM user_entity WHERE name='ingestion-bot' LIMIT 1;",
+        ],
+        capture_output=True,
+        text=True,
     )
     return result.stdout.strip()
 
 
 def get_fernet_key():
     result = subprocess.run(
-        ["docker", "exec", "openmetadata_server", "env"],
-        capture_output=True, text=True
+        ["docker", "exec", "openmetadata_server", "env"], capture_output=True, text=True
     )
     for line in result.stdout.splitlines():
         if line.startswith("FERNET_KEY="):
@@ -41,21 +50,33 @@ def get_fernet_key():
 try:
     encrypted = get_encrypted_token()
     if not encrypted or encrypted == "NULL":
-        print("Error: No token found in user_entity table. Is OpenMetadata running?",
-              file=sys.stderr)
+        print(
+            "Error: No token found in user_entity table. " "Is OpenMetadata running?",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if encrypted.startswith("fernet:"):
         if Fernet is None:
-            print("Error: cryptography package required. Run: pip install cryptography",
-                  file=sys.stderr)
+            print(
+                "Error: cryptography package required. "
+                "Run: pip install cryptography",
+                file=sys.stderr,
+            )
             sys.exit(1)
         fernet_key = get_fernet_key()
         if not fernet_key:
-            print("Error: Could not find FERNET_KEY in openmetadata_server environment.",
-                  file=sys.stderr)
+            print(
+                "Error: Could not find FERNET_KEY in "
+                "openmetadata_server environment.",
+                file=sys.stderr,
+            )
             sys.exit(1)
-        token = Fernet(fernet_key.encode()).decrypt(encrypted[len("fernet:"):].encode()).decode()
+        token = (
+            Fernet(fernet_key.encode())
+            .decrypt(encrypted[len("fernet:") :].encode())
+            .decode()
+        )
     else:
         # Plain JWT — future OM versions may store token unencrypted
         token = encrypted

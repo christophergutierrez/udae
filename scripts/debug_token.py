@@ -23,7 +23,7 @@ if not OM_TOKEN:
     print("❌ OM_TOKEN is not set in .env file")
     sys.exit(1)
 
-print(f"✅ Token loaded from .env")
+print("✅ Token loaded from .env")
 print(f"   Length: {len(OM_TOKEN)} characters")
 print(f"   First 20 chars: {OM_TOKEN[:20]}...")
 print(f"   Last 20 chars: ...{OM_TOKEN[-20:]}")
@@ -54,10 +54,7 @@ print()
 
 # Test 2: Try to get current user info
 print("Test 2: Get current user with token...")
-headers = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+headers = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
 
 response = requests.get(f"{OM_URL}/v1/users/loggedInUser", headers=headers)
 print(f"Status: {response.status_code}")
@@ -65,12 +62,12 @@ print(f"Response: {response.text[:200]}")
 
 if response.status_code == 200:
     user = response.json()
-    print(f"✅ Token is valid!")
+    print("✅ Token is valid!")
     print(f"   Logged in as: {user.get('name')} ({user.get('email')})")
     print(f"   User type: {user.get('type', 'N/A')}")
     print(f"   Is admin: {user.get('isAdmin', False)}")
 else:
-    print(f"❌ Token authentication failed!")
+    print("❌ Token authentication failed!")
     print(f"   Full response: {response.text}")
 
 print()
@@ -82,12 +79,12 @@ print(f"Status: {response.status_code}")
 
 if response.status_code == 200:
     services = response.json()
-    print(f"✅ Can list services!")
+    print("✅ Can list services!")
     print(f"   Found {len(services.get('data', []))} services")
-    for svc in services.get('data', [])[:3]:
+    for svc in services.get("data", [])[:3]:
         print(f"   - {svc.get('name')}")
 elif response.status_code == 401:
-    print(f"❌ Unauthorized (401)")
+    print("❌ Unauthorized (401)")
     print(f"   Response: {response.text}")
 else:
     print(f"⚠️  Status {response.status_code}")
@@ -106,15 +103,13 @@ test_service = {
             "username": "test",
             "password": "test",
             "hostPort": "localhost:5432",
-            "database": "test"
+            "database": "test",
         }
-    }
+    },
 }
 
 response = requests.post(
-    f"{OM_URL}/v1/services/databaseServices",
-    headers=headers,
-    json=test_service
+    f"{OM_URL}/v1/services/databaseServices", headers=headers, json=test_service
 )
 
 print(f"Status: {response.status_code}")

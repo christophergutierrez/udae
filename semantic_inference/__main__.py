@@ -138,7 +138,8 @@ Examples:
         config = InferenceConfig.from_args(args)
         if not config.llm.api_key:
             log.error(
-                "No API key found. Set ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable."
+                "No API key found. Set ANTHROPIC_API_KEY or "
+                "ANTHROPIC_AUTH_TOKEN environment variable."
             )
             return 1
     except Exception as e:

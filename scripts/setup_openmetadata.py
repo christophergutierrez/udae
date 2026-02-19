@@ -25,10 +25,7 @@ if not OM_TOKEN:
     print("  # Then add to .env: OM_TOKEN=<output>")
     sys.exit(1)
 
-HEADERS = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
 
 AIRFLOW_BASE = "http://localhost:8080"
 
@@ -38,7 +35,7 @@ def get_airflow_token():
     response = requests.post(
         f"{AIRFLOW_BASE}/auth/token",
         headers={"Content-Type": "application/json"},
-        json={"username": "admin", "password": "admin"}
+        json={"username": "admin", "password": "admin"},
     )
     if response.status_code == 200:
         return response.json()["access_token"]
@@ -48,7 +45,9 @@ def get_airflow_token():
 def init_airflow_db():
     """Initialize Airflow DB (required before pipelines can run)"""
     print("🔧 Initializing Airflow DB...")
-    result = os.system("docker exec openmetadata_ingestion airflow db migrate > /dev/null 2>&1")
+    result = os.system(
+        "docker exec openmetadata_ingestion airflow db migrate > /dev/null 2>&1"
+    )
     if result == 0:
         print("✅ Airflow DB initialized")
     else:
@@ -69,9 +68,7 @@ def create_database_service():
                 "type": "Postgres",
                 "scheme": "postgresql+psycopg2",
                 "username": "postgres",
-                "authType": {
-                    "password": "pagila"
-                },
+                "authType": {"password": "pagila"},
                 # Use Docker internal hostname so OM ingestion container can reach it
                 "hostPort": "pagila_postgres:5432",
                 "database": "pagila",
@@ -79,9 +76,9 @@ def create_database_service():
                 "supportsMetadataExtraction": True,
                 "supportsDBTExtraction": True,
                 "supportsProfiler": True,
-                "supportsQueryComment": True
+                "supportsQueryComment": True,
             }
-        }
+        },
     }
 
     url = f"{OM_URL}/v1/services/databaseServices"
@@ -90,7 +87,7 @@ def create_database_service():
     if response.status_code in [200, 201]:
         service = response.json()
         print(f"✅ Created service: {service['id']}")
-        return service['id']
+        return service["id"]
     elif response.status_code == 409:
         print("⏭️  Service 'pagila' already exists")
         get_url = f"{OM_URL}/v1/services/databaseServices/name/pagila"
@@ -105,14 +102,19 @@ def create_database_service():
                 patch_response = requests.patch(
                     patch_url,
                     headers={**HEADERS, "Content-Type": "application/json-patch+json"},
-                    json=[{"op": "replace", "path": "/connection/config/hostPort",
-                           "value": "pagila_postgres:5432"}]
+                    json=[
+                        {
+                            "op": "replace",
+                            "path": "/connection/config/hostPort",
+                            "value": "pagila_postgres:5432",
+                        }
+                    ],
                 )
                 if patch_response.status_code == 200:
                     print("✅ Fixed hostPort to pagila_postgres:5432")
                 else:
                     print(f"⚠️  Could not fix hostPort: {patch_response.status_code}")
-            return service['id']
+            return service["id"]
     else:
         print(f"❌ Failed to create service: {response.status_code}")
         print(f"   Response: {response.text}")
@@ -127,27 +129,18 @@ def create_metadata_ingestion(service_id):
         "name": "pagila_metadata",
         "displayName": "Pagila Metadata Ingestion",
         "pipelineType": "metadata",
-        "service": {
-            "id": service_id,
-            "type": "databaseService"
-        },
+        "service": {"id": service_id, "type": "databaseService"},
         "sourceConfig": {
             "config": {
                 "type": "DatabaseMetadata",
                 "markDeletedTables": True,
                 "includeTables": True,
                 "includeViews": True,
-                "databaseFilterPattern": {
-                    "includes": ["pagila"]
-                },
-                "schemaFilterPattern": {
-                    "includes": ["public"]
-                }
+                "databaseFilterPattern": {"includes": ["pagila"]},
+                "schemaFilterPattern": {"includes": ["public"]},
             }
         },
-        "airflowConfig": {
-            "scheduleInterval": "0 0 * * *"
-        }
+        "airflowConfig": {"scheduleInterval": "0 0 * * *"},
     }
 
     url = f"{OM_URL}/v1/services/ingestionPipelines"
@@ -156,13 +149,15 @@ def create_metadata_ingestion(service_id):
     if response.status_code in [200, 201]:
         pipeline = response.json()
         print(f"✅ Created metadata pipeline: {pipeline['id']}")
-        return pipeline['id']
+        return pipeline["id"]
     elif response.status_code == 409:
         print("⏭️  Pipeline 'pagila_metadata' already exists")
-        get_url = f"{OM_URL}/v1/services/ingestionPipelines/name/pagila.pagila_metadata"
+        get_url = (
+            f"{OM_URL}/v1/services/ingestionPipelines/name/" "pagila.pagila_metadata"
+        )
         response = requests.get(get_url, headers=HEADERS)
         if response.status_code == 200:
-            return response.json()['id']
+            return response.json()["id"]
     else:
         print(f"❌ Failed to create pipeline: {response.status_code}")
         print(f"   Response: {response.text}")
@@ -194,14 +189,14 @@ def trigger_pipeline_via_airflow(dag_id="pagila_metadata"):
 
     airflow_headers = {
         "Authorization": f"Bearer {airflow_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     # Unpause the DAG first
     requests.patch(
         f"{AIRFLOW_BASE}/api/v2/dags/{dag_id}",
         headers=airflow_headers,
-        json={"is_paused": False}
+        json={"is_paused": False},
     )
 
     # Trigger a DAG run
@@ -210,14 +205,17 @@ def trigger_pipeline_via_airflow(dag_id="pagila_metadata"):
     response = requests.post(
         f"{AIRFLOW_BASE}/api/v2/dags/{dag_id}/dagRuns",
         headers=airflow_headers,
-        json={"dag_run_id": run_id, "logical_date": logical_date}
+        json={"dag_run_id": run_id, "logical_date": logical_date},
     )
 
     if response.status_code == 200:
         print(f"✅ DAG run triggered (id: {run_id})")
         return run_id, airflow_token
     else:
-        print(f"⚠️  Airflow trigger returned {response.status_code}: {response.text[:200]}")
+        print(
+            f"⚠️  Airflow trigger returned {response.status_code}: "
+            f"{response.text[:200]}"
+        )
         return False
 
 
@@ -231,7 +229,7 @@ def wait_for_ingestion(dag_id, run_id, airflow_token, timeout=300):
         time.sleep(10)
         response = requests.get(
             f"{AIRFLOW_BASE}/api/v2/dags/{dag_id}/dagRuns/{run_id}",
-            headers=airflow_headers
+            headers=airflow_headers,
         )
         if response.status_code == 200:
             state = response.json().get("state")
@@ -240,12 +238,18 @@ def wait_for_ingestion(dag_id, run_id, airflow_token, timeout=300):
                 print("✅ Ingestion completed successfully!")
                 return True
             elif state == "failed":
-                print("❌ Ingestion failed. Check Airflow logs at http://localhost:8080")
+                print(
+                    "❌ Ingestion failed. Check Airflow logs at "
+                    "http://localhost:8080"
+                )
                 return False
         else:
             print(f"   (could not poll status: {response.status_code})")
 
-    print("⚠️  Timed out waiting for ingestion. Check http://localhost:8080 for status.")
+    print(
+        "⚠️  Timed out waiting for ingestion. Check "
+        "http://localhost:8080 for status."
+    )
     return False
 
 
@@ -306,7 +310,9 @@ def main():
             print("✅ Setup complete!")
         else:
             print(f"⚠️  Setup complete but only {count} tables found (expected 23).")
-            print("   Re-run this script or check Airflow logs at http://localhost:8080")
+            print(
+                "   Re-run this script or check Airflow logs at http://localhost:8080"
+            )
     else:
         print()
         print("=" * 60)

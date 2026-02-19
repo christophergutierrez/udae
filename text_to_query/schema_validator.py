@@ -5,7 +5,7 @@ Validates queries against the actual database schema and suggests
 valid alternatives when invalid joins are attempted.
 """
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 from .schema_parser import get_schema_parser
 
 
@@ -53,14 +53,20 @@ class SchemaValidator:
                     long_paths.append((cube_a, cube_b, path))
 
         if invalid_pairs:
-            suggestions = self._suggest_alternatives(invalid_pairs[0][0], invalid_pairs[0][1])
+            suggestions = self._suggest_alternatives(
+                invalid_pairs[0][0], invalid_pairs[0][1]
+            )
             return {
                 "valid": False,
                 "error_type": "no_join_path",
                 "from_cube": invalid_pairs[0][0],
                 "to_cube": invalid_pairs[0][1],
-                "message": f"No join path exists between {invalid_pairs[0][0]} and {invalid_pairs[0][1]}",
-                "suggestions": suggestions
+                "message": (
+                    f"No join path exists between "
+                    f"{invalid_pairs[0][0]} and "
+                    f"{invalid_pairs[0][1]}"
+                ),
+                "suggestions": suggestions,
             }
 
         if long_paths:
@@ -68,8 +74,12 @@ class SchemaValidator:
             return {
                 "valid": True,
                 "warning": True,
-                "message": f"Join path between {cube_a} and {cube_b} is very long ({len(path)} hops). Results may be unexpected.",
-                "path": " → ".join(path)
+                "message": (
+                    f"Join path between {cube_a} and {cube_b} "
+                    f"is very long ({len(path)} hops). "
+                    "Results may be unexpected."
+                ),
+                "path": " → ".join(path),
             }
 
         return {"valid": True}
@@ -91,39 +101,62 @@ class SchemaValidator:
         to_cube_upper = to_cube.upper()
 
         # Special case: Geography-related queries
-        if to_cube_upper in ["ADDRESS", "CITY", "COUNTRY"] or "state" in to_cube.lower():
+        if (
+            to_cube_upper in ["ADDRESS", "CITY", "COUNTRY"]
+            or "state" in to_cube.lower()
+        ):
             # Suggest entities that DO have addresses
             for entity in self.ADDRESS_ENTITIES:
                 if entity != from_cube_upper:
                     path = self.parser.get_join_path(entity, "ADDRESS")
                     if path and len(path) <= self.MAX_JOIN_PATH_LENGTH:
-                        suggestions.append({
-                            "type": "alternative_entity",
-                            "entity": entity.title(),
-                            "description": f"{entity.title()}s have addresses and can be queried by location",
-                            "example": f"How many {entity.lower()}s are there per state?"
-                        })
+                        suggestions.append(
+                            {
+                                "type": "alternative_entity",
+                                "entity": entity.title(),
+                                "description": (
+                                    f"{entity.title()}s have "
+                                    "addresses and can be queried by "
+                                    "location"
+                                ),
+                                "example": (
+                                    f"How many {entity.lower()}s are there "
+                                    "per state?"
+                                ),
+                            }
+                        )
 
         # Suggest querying each cube separately
-        suggestions.append({
-            "type": "separate_queries",
-            "description": f"Query {from_cube} and {to_cube} separately",
-            "example": f"Try 'How many {from_cube}s are there?' and 'How many {to_cube}s are there?' separately"
-        })
+        suggestions.append(
+            {
+                "type": "separate_queries",
+                "description": f"Query {from_cube} and {to_cube} separately",
+                "example": f"Try 'How many {from_cube}s are there?' and 'How many {to_cube}s are there?' separately",
+            }
+        )
 
         # Find entities related to from_cube
         from_related = self.parser.get_related_entities(from_cube)
         if from_related["children"] or from_related["parents"]:
             all_related = set(from_related["children"] + from_related["parents"])
             # Remove views and junction tables
-            related_entities = [e for e in all_related if not any(x in e.upper() for x in ["_LIST", "_INFO", "FILM_ACTOR", "FILM_CATEGORY"])]
+            related_entities = [
+                e
+                for e in all_related
+                if not any(
+                    x in e.upper()
+                    for x in ["_LIST", "_INFO", "FILM_ACTOR", "FILM_CATEGORY"]
+                )
+            ]
 
             if related_entities:
-                suggestions.append({
-                    "type": "related_entities",
-                    "description": f"{from_cube} is directly related to: {', '.join([e.title() for e in related_entities[:3]])}",
-                    "example": f"Try querying {from_cube} with one of these instead"
-                })
+                suggestions.append(
+                    {
+                        "type": "related_entities",
+                        "description": f"{from_cube} is directly related to: {', '.join([e.title() for e in related_entities[:3]])}",
+                        "example": f"Try querying {from_cube} with one of these instead",
+                    }
+                )
 
         return suggestions
 
@@ -178,7 +211,9 @@ class SchemaValidator:
         suggestions = validation_result.get("suggestions", [])
         if suggestions:
             msg += "💡 Suggestions:\n"
-            for i, suggestion in enumerate(suggestions[:3], 1):  # Limit to 3 suggestions
+            for i, suggestion in enumerate(
+                suggestions[:3], 1
+            ):  # Limit to 3 suggestions
                 if suggestion["type"] == "alternative_entity":
                     msg += f"\n{i}. Try querying {suggestion['entity']} instead:\n"
                     msg += f"   Example: \"{suggestion['example']}\"\n"
@@ -192,6 +227,7 @@ class SchemaValidator:
 
 # Singleton instance
 _validator = None
+
 
 def get_schema_validator() -> SchemaValidator:
     """Get singleton validator instance."""

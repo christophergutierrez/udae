@@ -6,7 +6,6 @@ Fixes the database filter pattern issue
 
 import os
 import sys
-import json
 import requests
 from dotenv import load_dotenv
 
@@ -24,10 +23,8 @@ if not OM_TOKEN:
     print("   3. Copy JWT token to .env as OM_TOKEN")
     sys.exit(1)
 
-HEADERS = {
-    "Authorization": f"Bearer {OM_TOKEN}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {OM_TOKEN}", "Content-Type": "application/json"}
+
 
 def get_service_id(service_name="pagila"):
     """Get the service ID for the database service"""
@@ -38,23 +35,21 @@ def get_service_id(service_name="pagila"):
 
     if response.status_code != 200:
         print(f"❌ Service '{service_name}' not found")
-        print(f"   Please add the Pagila database service first via the UI")
-        print(f"   Settings → Services → Databases → Add Service")
+        print("   Please add the Pagila database service first via the UI")
+        print("   Settings → Services → Databases → Add Service")
         sys.exit(1)
 
     service = response.json()
     print(f"✅ Found service: {service['id']}")
-    return service['id']
+    return service["id"]
+
 
 def delete_existing_profiler(service_id):
     """Delete existing profiler ingestion pipelines"""
     print("🗑️  Checking for existing profiler pipelines...")
 
     url = f"{OM_URL}/v1/services/ingestionPipelines"
-    params = {
-        "service": service_id,
-        "pipelineType": "profiler"
-    }
+    params = {"service": service_id, "pipelineType": "profiler"}
 
     response = requests.get(url, headers=HEADERS, params=params)
 
@@ -62,13 +57,14 @@ def delete_existing_profiler(service_id):
         pipelines = response.json().get("data", [])
         for pipeline in pipelines:
             print(f"   Deleting: {pipeline['name']}")
-            delete_url = f"{OM_URL}/v1/services/ingestionPipelines/{pipeline['id']}"
+            delete_url = f"{OM_URL}/v1/services/ingestionPipelines/" f"{pipeline['id']}"
             requests.delete(delete_url, headers=HEADERS, params={"hardDelete": "true"})
 
         if pipelines:
             print(f"✅ Deleted {len(pipelines)} existing profiler(s)")
     else:
         print("⏭️  No existing profilers found")
+
 
 def create_profiler(service_id):
     """Create a new profiler with correct configuration"""
@@ -78,10 +74,7 @@ def create_profiler(service_id):
         "name": "pagila_profiler",
         "displayName": "Pagila Profiler",
         "pipelineType": "profiler",
-        "service": {
-            "id": service_id,
-            "type": "databaseService"
-        },
+        "service": {"id": service_id, "type": "databaseService"},
         "sourceConfig": {
             "config": {
                 "type": "Profiler",
@@ -90,21 +83,19 @@ def create_profiler(service_id):
                 "profileSampleType": "PERCENTAGE",
                 "databaseFilterPattern": {
                     "includes": ["pagila"],  # ✅ Explicitly include pagila
-                    "excludes": ["^template.*"]
+                    "excludes": ["^template.*"],
                 },
                 "schemaFilterPattern": {
                     "includes": ["public"],  # ✅ Include public schema
-                    "excludes": []
+                    "excludes": [],
                 },
                 "tableFilterPattern": {
                     "includes": [".*"],  # Include all tables
-                    "excludes": []
-                }
+                    "excludes": [],
+                },
             }
         },
-        "airflowConfig": {
-            "scheduleInterval": "0 */6 * * *"  # Every 6 hours
-        }
+        "airflowConfig": {"scheduleInterval": "0 */6 * * *"},  # Every 6 hours
     }
 
     url = f"{OM_URL}/v1/services/ingestionPipelines"
@@ -113,17 +104,19 @@ def create_profiler(service_id):
     if response.status_code in [200, 201]:
         pipeline = response.json()
         print(f"✅ Created profiler: {pipeline['id']}")
-        return pipeline['id']
+        return pipeline["id"]
     else:
         print(f"❌ Failed to create profiler: {response.status_code}")
         print(f"   Response: {response.text}")
         sys.exit(1)
 
+
 def trigger_profiler(pipeline_id):
     """Trigger the profiler to run.
 
     Note: In OM 1.11.x the /trigger endpoint may return 400 even on success.
-    If this fails, trigger via Airflow at http://localhost:8080 (admin/admin).
+    If this fails, trigger via Airflow at http://localhost:8080
+    (admin/admin).
     """
     print("🚀 Triggering profiler run...")
 
@@ -136,10 +129,13 @@ def trigger_profiler(pipeline_id):
         print("   Services → pagila → Ingestion → View Logs")
         return True
     else:
-        print(f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)")
+        print(
+            f"⚠️  OM trigger returned {response.status_code} (known issue in OM 1.11.x)"
+        )
         print("   Trigger manually via Airflow UI at http://localhost:8080")
         print("   Login: admin/admin → find DAG: pagila_profiler → trigger")
         return False
+
 
 def main():
     print("🔧 OpenMetadata Profiler Configuration")
@@ -170,6 +166,7 @@ def main():
     print("  - Profiles 23 tables in public schema")
     print("  - Collects statistics (nulls, unique values, etc.)")
     print("  - Takes 2-5 minutes to complete")
+
 
 if __name__ == "__main__":
     main()

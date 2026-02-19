@@ -10,9 +10,11 @@ from text_to_query.server import create_app
 def app():
     """Create and configure a new app instance for each test."""
     app = create_app()
-    app.config.update({
-        "TESTING": True,
-    })
+    app.config.update(
+        {
+            "TESTING": True,
+        }
+    )
     yield app
 
 
@@ -24,8 +26,8 @@ def client(app):
 
 def test_health_check(client):
     """Test the health check endpoint."""
-    response = client.get('/health')
+    response = client.get("/health")
     assert response.status_code == 200
     json_data = response.get_json()
-    assert 'status' in json_data
-    assert json_data['status'] in ['healthy', 'unhealthy']
+    assert "status" in json_data
+    assert json_data["status"] in ["healthy", "unhealthy"]
