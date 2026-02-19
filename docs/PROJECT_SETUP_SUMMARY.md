@@ -14,7 +14,6 @@ This directory contains a complete, ready-to-deploy UDAE (Universal Database Ans
 | **LLM_PROVIDER_CONFIG.md** | Configure any LLM provider | Setting up LLM |
 | **PROJECT_STATUS.md** | Track your setup progress | During setup |
 | **DOCUMENTATION_SUMMARY.md** | What was created in this project | Reference |
-| **DATABASE_SCHEMA.md** | Pagila database schema reference | Understanding data |
 
 ### Code Components
 
@@ -181,7 +180,6 @@ Changes propagate automatically
 ### Component Details
 - **text_to_query/README.md** - Natural language interface
 - **text_to_query/AUTO_HEALING_EXAMPLES.md** - Auto-healing capabilities
-- **text_to_query/SCHEMA_VALIDATION_COMPLETE.md** - Validation logic
 - **semantic_inference/README.md** - LLM inference details
 - **semantic_layer/README.md** - Schema generation logic
 

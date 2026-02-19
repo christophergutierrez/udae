@@ -425,15 +425,11 @@ mkdir -p cube_project/schema
 # Create symlinks to Cube.js schemas (use -f to force overwrite if exists)
 ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
 
-# Create symlink to database schema documentation
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/
-
 # Verify symlinks created
 ls -la cube_project/schema/
 # Should show:
 #   Actor.js -> /path/to/schemas/Actor.js
 #   Customer.js -> /path/to/schemas/Customer.js
-#   DATABASE_SCHEMA.md -> /path/to/docs/DATABASE_SCHEMA.md
 #   (and all other .js schema files)
 ```
 

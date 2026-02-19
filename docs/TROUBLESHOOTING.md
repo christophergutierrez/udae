@@ -173,22 +173,13 @@ docker exec pagila_postgres psql -U postgres -d pagila -c "\dt"
 
 ### 8. text_to_query: "Cubes directory not found"
 
-**Error:**
-```
-FileNotFoundError: /path/to/cube_project/schema/DATABASE_SCHEMA.md
-```
-
 **Cause:** text_to_query expects `cube_project/schema/` but schemas are in `schemas/`
 
 **Solution:**
 ```bash
-# In your UDAE project directory, create symlinks
 mkdir -p cube_project/schema
 ln -s $(pwd)/schemas/* cube_project/schema/
-ln -s $(pwd)/docs/DATABASE_SCHEMA.md cube_project/schema/
 ```
-
-Or update code to use `schemas/` directly.
 
 ---
 

@@ -97,6 +97,7 @@ async def natural_language_query():
                 query=query,
                 query_executor=query_executor,
                 query_fixer=query_fixer,
+                cube_metadata=cube_metadata,
                 question=question,
                 schema_context=schema_context,
             )
@@ -137,7 +138,10 @@ async def execute_query():
             )
 
         result = await execute_query_with_fixing(
-            query=query, query_executor=query_executor, query_fixer=query_fixer
+            query=query,
+            query_executor=query_executor,
+            query_fixer=query_fixer,
+            cube_metadata=cube_metadata,
         )
 
         if not result["success"]:
@@ -187,6 +191,7 @@ async def refine_query():
                 query=query,
                 query_executor=query_executor,
                 query_fixer=query_fixer,
+                cube_metadata=cube_metadata,
                 question=question,
                 schema_context=schema_context,
             )

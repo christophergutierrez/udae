@@ -19,7 +19,7 @@ from text_to_query.query_executor import QueryExecutor
 from text_to_query.query_fixer import QueryFixer
 from text_to_query.query_generator import QueryGenerator
 from text_to_query.schema_healer import SchemaHealer
-from text_to_query.schema_validator import get_schema_validator
+from text_to_query.schema_validator import SchemaValidator
 
 mcp = FastMCP(
     "udae",
@@ -32,7 +32,7 @@ cube_metadata = CubeMetadata(config.cube)
 query_generator = QueryGenerator(config.llm)
 query_executor = QueryExecutor(config.cube)
 schema_healer = SchemaHealer()
-schema_validator = get_schema_validator()
+schema_validator = SchemaValidator(cube_metadata)
 query_fixer = QueryFixer(config.llm)
 
 
@@ -44,7 +44,7 @@ async def _execute_with_fixing(
     """Execute a Cube.js query with automatic schema validation and error fixing."""
     cubes = schema_validator.extract_cubes_from_query(query)
     if len(cubes) > 1:
-        validation = schema_validator.validate_query_cubes(cubes)
+        validation = await schema_validator.validate_query_cubes(cubes)
         if not validation["valid"]:
             if question and schema_context:
                 fix_result = query_fixer.attempt_fix(

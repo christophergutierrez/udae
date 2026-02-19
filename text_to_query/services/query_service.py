@@ -5,16 +5,14 @@ Handles the business logic for query execution, validation, and fixing.
 import logging
 from typing import Dict, Any
 
+from ..cube_metadata import CubeMetadata
 from ..query_executor import QueryExecutor
 from ..schema_healer import SchemaHealer
-from ..schema_validator import get_schema_validator
+from ..schema_validator import SchemaValidator
 from ..query_fixer import QueryFixer
 
 logger = logging.getLogger(__name__)
 
-# Initialize components
-# In a larger app, these would be injected dependencies
-schema_validator = get_schema_validator()
 schema_healer = SchemaHealer()
 
 
@@ -22,6 +20,7 @@ async def execute_query_with_fixing(
     query: Dict[str, Any],
     query_executor: QueryExecutor,
     query_fixer: QueryFixer,
+    cube_metadata: CubeMetadata,
     question: str = "",
     schema_context: str = "",
 ) -> Dict[str, Any]:
@@ -43,9 +42,10 @@ async def execute_query_with_fixing(
         Execution result with optional fix information
     """
     # STEP 1: Pre-validate query against schema
+    schema_validator = SchemaValidator(cube_metadata)
     cubes = schema_validator.extract_cubes_from_query(query)
     if len(cubes) > 1:  # Only validate multi-cube queries
-        validation = schema_validator.validate_query_cubes(cubes)
+        validation = await schema_validator.validate_query_cubes(cubes)
 
         if not validation["valid"]:
             # Invalid join path - try to fix with LLM

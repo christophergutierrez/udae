@@ -44,7 +44,6 @@ All documentation is in the **[docs/](./docs/)** folder:
 
 - **[PROJECT_STATUS.md](./docs/PROJECT_STATUS.md)** - Setup progress tracker
 - **[PROJECT_SETUP_SUMMARY.md](./docs/PROJECT_SETUP_SUMMARY.md)** - Complete overview
-- **[DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md)** - Pagila schema reference
 - **[DOCUMENTATION_SUMMARY.md](./docs/DOCUMENTATION_SUMMARY.md)** - Doc package summary
 - **[DOCUMENTATION_UPDATES.md](./docs/DOCUMENTATION_UPDATES.md)** - Recent changes
 

@@ -35,7 +35,7 @@ I've created a complete deployment package with comprehensive documentation for 
 ✅ **Philosophy**: OpenMetadata as single source of truth
 ✅ **Data Flow**: Discovery → Inference → Human Review → Generate → Serve
 ✅ **Auto-Healing**: Automatic measure addition and query fixing
-✅ **Schema Validation**: Pre-execution query validation against DATABASE_SCHEMA.md
+✅ **Schema Validation**: Pre-execution query validation against live Cube.js schema
 ✅ **Generic LLM Config**: Works with any provider (like Goose AI)
 ✅ **Automated Profiler**: API-based profiler configuration (no manual UI)
 ✅ **Deployment Options**: Docker Compose (dev) + Kubernetes (production)
@@ -238,7 +238,7 @@ Three categories of handling:
    - Provides manual fix instructions
 
 3. **Invalid Joins (Suggest)**: No path between tables
-   - Validates against DATABASE_SCHEMA.md
+   - Validates against live Cube.js schema
    - Suggests valid alternatives
    - Explains relationships
 
@@ -246,7 +246,7 @@ Three categories of handling:
 
 Pre-execution validation:
 - Extracts cubes from query
-- Checks join paths in DATABASE_SCHEMA.md
+- Checks join paths from live Cube.js metadata
 - Warns about long paths (>3 hops)
 - Blocks impossible queries
 - Suggests valid alternatives

@@ -158,9 +158,6 @@ mkdir -p cube_project/schema
 # Create symlinks to Cube.js schemas
 find ./cubes -name "*.js" -exec ln -sf "$(pwd)/{}" cube_project/schema/ \; 
 
-# Create symlink for the auto-generated database schema documentation
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/
-
 # Verify
 ls -la cube_project/schema/
 # Should show symlinks to all .js schema files

@@ -1,237 +1,192 @@
 """
 Schema validator with intelligent query suggestions.
 
-Validates queries against the actual database schema and suggests
-valid alternatives when invalid joins are attempted.
+Validates queries against the live Cube.js schema and suggests valid
+alternatives when invalid joins are attempted.
 """
 
-from typing import Dict, List
-from .schema_parser import get_schema_parser
+from collections import deque
+from typing import Any, Dict, List, Set
+
+from .cube_metadata import CubeMetadata
 
 
 class SchemaValidator:
-    """Validates queries and suggests alternatives based on schema."""
+  """Validates queries and suggests alternatives based on live Cube.js schema."""
 
-    # Maximum reasonable join path length
-    MAX_JOIN_PATH_LENGTH = 3
+  MAX_JOIN_PATH_LENGTH = 3
 
-    # Entities that commonly have addresses (for suggestions)
-    ADDRESS_ENTITIES = {"CUSTOMER", "STAFF", "STORE"}
+  def __init__(self, cube_metadata: CubeMetadata):
+    self._cube_metadata = cube_metadata
 
-    # Entities that commonly involve geography
-    GEOGRAPHIC_ENTITIES = {"CUSTOMER", "STAFF", "STORE", "ADDRESS", "CITY", "COUNTRY"}
+  def _build_join_graph(self, metadata: Dict[str, Any]) -> Dict[str, Set[str]]:
+    """Build bidirectional adjacency graph from Cube.js metadata joins."""
+    graph: Dict[str, Set[str]] = {}
+    for cube in metadata.get("cubes", []):
+      name = cube["name"]
+      if name not in graph:
+        graph[name] = set()
+      for join in cube.get("joins", []):
+        neighbor = join["name"]
+        graph[name].add(neighbor)
+        if neighbor not in graph:
+          graph[neighbor] = set()
+        graph[neighbor].add(name)
+    return graph
 
-    def __init__(self):
-        self.parser = get_schema_parser()
+  def _get_join_path(
+      self, graph: Dict[str, Set[str]], from_cube: str, to_cube: str
+  ) -> List[str] | None:
+    """BFS to find shortest join path between two cubes."""
+    if from_cube == to_cube:
+      return [from_cube]
 
-    def validate_query_cubes(self, cubes: List[str]) -> Dict:
-        """
-        Validate that cubes in a query can be joined.
+    queue = deque([(from_cube, [from_cube])])
+    visited = {from_cube}
 
-        Args:
-            cubes: List of cube names used in query
+    while queue:
+      current, path = queue.popleft()
+      for neighbor in graph.get(current, set()):
+        if neighbor not in visited:
+          new_path = path + [neighbor]
+          if neighbor == to_cube:
+            return new_path
+          visited.add(neighbor)
+          queue.append((neighbor, new_path))
 
-        Returns:
-            Dict with validation result and suggestions
-        """
-        if len(cubes) <= 1:
-            return {"valid": True}
+    return None
 
-        # Check all pairs of cubes
-        invalid_pairs = []
-        long_paths = []
+  async def validate_query_cubes(self, cubes: List[str]) -> Dict[str, Any]:
+    """
+    Validate that cubes in a query can be joined.
 
-        for i in range(len(cubes)):
-            for j in range(i + 1, len(cubes)):
-                cube_a, cube_b = cubes[i], cubes[j]
+    Args:
+      cubes: List of cube names used in query.
 
-                path = self.parser.get_join_path(cube_a, cube_b)
+    Returns:
+      Dict with validation result and suggestions.
+    """
+    if len(cubes) <= 1:
+      return {"valid": True}
 
-                if path is None:
-                    invalid_pairs.append((cube_a, cube_b))
-                elif len(path) > self.MAX_JOIN_PATH_LENGTH:
-                    long_paths.append((cube_a, cube_b, path))
+    metadata = await self._cube_metadata.fetch_metadata()
+    graph = self._build_join_graph(metadata)
 
-        if invalid_pairs:
-            suggestions = self._suggest_alternatives(
-                invalid_pairs[0][0], invalid_pairs[0][1]
-            )
-            return {
-                "valid": False,
-                "error_type": "no_join_path",
-                "from_cube": invalid_pairs[0][0],
-                "to_cube": invalid_pairs[0][1],
-                "message": (
-                    f"No join path exists between "
-                    f"{invalid_pairs[0][0]} and "
-                    f"{invalid_pairs[0][1]}"
-                ),
-                "suggestions": suggestions,
-            }
+    invalid_pairs = []
+    long_paths = []
 
-        if long_paths:
-            cube_a, cube_b, path = long_paths[0]
-            return {
-                "valid": True,
-                "warning": True,
-                "message": (
-                    f"Join path between {cube_a} and {cube_b} "
-                    f"is very long ({len(path)} hops). "
-                    "Results may be unexpected."
-                ),
-                "path": " → ".join(path),
-            }
+    for i in range(len(cubes)):
+      for j in range(i + 1, len(cubes)):
+        cube_a, cube_b = cubes[i], cubes[j]
+        path = self._get_join_path(graph, cube_a, cube_b)
+        if path is None:
+          invalid_pairs.append((cube_a, cube_b))
+        elif len(path) > self.MAX_JOIN_PATH_LENGTH:
+          long_paths.append((cube_a, cube_b, path))
 
-        return {"valid": True}
+    if invalid_pairs:
+      cube_a, cube_b = invalid_pairs[0]
+      return {
+          "valid": False,
+          "error_type": "no_join_path",
+          "from_cube": cube_a,
+          "to_cube": cube_b,
+          "message": f"No join path exists between {cube_a} and {cube_b}",
+          "suggestions": self._suggest_alternatives(graph, cube_a, cube_b),
+      }
 
-    def _suggest_alternatives(self, from_cube: str, to_cube: str) -> List[Dict]:
-        """
-        Suggest valid alternative queries when a join path doesn't exist.
+    if long_paths:
+      cube_a, cube_b, path = long_paths[0]
+      return {
+          "valid": True,
+          "warning": True,
+          "message": (
+              f"Join path between {cube_a} and {cube_b} is very long "
+              f"({len(path)} hops). Results may be unexpected."
+          ),
+          "path": " → ".join(path),
+      }
 
-        Args:
-            from_cube: Source cube
-            to_cube: Target cube
+    return {"valid": True}
 
-        Returns:
-            List of suggestion dicts with description and example
-        """
-        suggestions = []
+  def _suggest_alternatives(
+      self, graph: Dict[str, Set[str]], from_cube: str, to_cube: str
+  ) -> List[Dict[str, str]]:
+    """Suggest valid alternatives when a join path doesn't exist."""
+    suggestions = []
 
-        from_cube_upper = from_cube.upper()
-        to_cube_upper = to_cube.upper()
+    suggestions.append({
+        "type": "separate_queries",
+        "description": f"Query {from_cube} and {to_cube} separately",
+        "example": (
+            f"Try 'How many {from_cube}s are there?' and "
+            f"'How many {to_cube}s are there?' separately"
+        ),
+    })
 
-        # Special case: Geography-related queries
-        if (
-            to_cube_upper in ["ADDRESS", "CITY", "COUNTRY"]
-            or "state" in to_cube.lower()
-        ):
-            # Suggest entities that DO have addresses
-            for entity in self.ADDRESS_ENTITIES:
-                if entity != from_cube_upper:
-                    path = self.parser.get_join_path(entity, "ADDRESS")
-                    if path and len(path) <= self.MAX_JOIN_PATH_LENGTH:
-                        suggestions.append(
-                            {
-                                "type": "alternative_entity",
-                                "entity": entity.title(),
-                                "description": (
-                                    f"{entity.title()}s have "
-                                    "addresses and can be queried by "
-                                    "location"
-                                ),
-                                "example": (
-                                    f"How many {entity.lower()}s are there "
-                                    "per state?"
-                                ),
-                            }
-                        )
+    related = sorted(graph.get(from_cube, set()))
+    if related:
+      suggestions.append({
+          "type": "related_entities",
+          "description": (
+              f"{from_cube} is directly related to: "
+              f"{', '.join(related[:3])}"
+          ),
+          "example": f"Try querying {from_cube} with one of these instead",
+      })
 
-        # Suggest querying each cube separately
-        suggestions.append(
-            {
-                "type": "separate_queries",
-                "description": f"Query {from_cube} and {to_cube} separately",
-                "example": f"Try 'How many {from_cube}s are there?' and 'How many {to_cube}s are there?' separately",
-            }
-        )
+    return suggestions
 
-        # Find entities related to from_cube
-        from_related = self.parser.get_related_entities(from_cube)
-        if from_related["children"] or from_related["parents"]:
-            all_related = set(from_related["children"] + from_related["parents"])
-            # Remove views and junction tables
-            related_entities = [
-                e
-                for e in all_related
-                if not any(
-                    x in e.upper()
-                    for x in ["_LIST", "_INFO", "FILM_ACTOR", "FILM_CATEGORY"]
-                )
-            ]
+  def extract_cubes_from_query(self, query: Dict[str, Any]) -> List[str]:
+    """
+    Extract cube names from a Cube.js query.
 
-            if related_entities:
-                suggestions.append(
-                    {
-                        "type": "related_entities",
-                        "description": f"{from_cube} is directly related to: {', '.join([e.title() for e in related_entities[:3]])}",
-                        "example": f"Try querying {from_cube} with one of these instead",
-                    }
-                )
+    Args:
+      query: Cube.js query dict.
 
-        return suggestions
+    Returns:
+      List of unique cube names.
+    """
+    cubes: Set[str] = set()
 
-    def extract_cubes_from_query(self, query: Dict) -> List[str]:
-        """
-        Extract cube names from a Cube.js query.
+    for dim in query.get("dimensions", []):
+      if "." in dim:
+        cubes.add(dim.split(".")[0])
 
-        Args:
-            query: Cube.js query dict
+    for measure in query.get("measures", []):
+      if "." in measure:
+        cubes.add(measure.split(".")[0])
 
-        Returns:
-            List of unique cube names
-        """
-        cubes = set()
+    for filter_item in query.get("filters", []):
+      member = filter_item.get("member", "")
+      if "." in member:
+        cubes.add(member.split(".")[0])
 
-        # Extract from dimensions
-        for dim in query.get("dimensions", []):
-            if "." in dim:
-                cube = dim.split(".")[0]
-                cubes.add(cube)
+    return list(cubes)
 
-        # Extract from measures
-        for measure in query.get("measures", []):
-            if "." in measure:
-                cube = measure.split(".")[0]
-                cubes.add(cube)
+  def format_validation_error(self, validation_result: Dict[str, Any]) -> str:
+    """
+    Format a validation error with suggestions into a user-friendly message.
 
-        # Extract from filters
-        for filter_item in query.get("filters", []):
-            member = filter_item.get("member", "")
-            if "." in member:
-                cube = member.split(".")[0]
-                cubes.add(cube)
+    Args:
+      validation_result: Result from validate_query_cubes.
 
-        return list(cubes)
+    Returns:
+      Formatted error message with suggestions.
+    """
+    if validation_result.get("valid"):
+      return ""
 
-    def format_validation_error(self, validation_result: Dict) -> str:
-        """
-        Format a validation error with suggestions into a user-friendly message.
+    msg = f"Cannot auto-fix: {validation_result['message']}.\n\n"
 
-        Args:
-            validation_result: Result from validate_query_cubes
+    suggestions = validation_result.get("suggestions", [])
+    if suggestions:
+      msg += "Suggestions:\n"
+      for i, suggestion in enumerate(suggestions[:3], 1):
+        if suggestion["type"] == "alternative_entity":
+          msg += f"\n{i}. Try querying {suggestion['entity']} instead:\n"
+          msg += f"   Example: \"{suggestion['example']}\"\n"
+        elif suggestion["type"] in ("separate_queries", "related_entities"):
+          msg += f"\n{i}. {suggestion['description']}\n"
 
-        Returns:
-            Formatted error message with suggestions
-        """
-        if validation_result.get("valid"):
-            return ""
-
-        msg = f"🔗 Cannot auto-fix: {validation_result['message']}.\n\n"
-
-        suggestions = validation_result.get("suggestions", [])
-        if suggestions:
-            msg += "💡 Suggestions:\n"
-            for i, suggestion in enumerate(
-                suggestions[:3], 1
-            ):  # Limit to 3 suggestions
-                if suggestion["type"] == "alternative_entity":
-                    msg += f"\n{i}. Try querying {suggestion['entity']} instead:\n"
-                    msg += f"   Example: \"{suggestion['example']}\"\n"
-                elif suggestion["type"] == "separate_queries":
-                    msg += f"\n{i}. {suggestion['description']}\n"
-                elif suggestion["type"] == "related_entities":
-                    msg += f"\n{i}. {suggestion['description']}\n"
-
-        return msg.strip()
-
-
-# Singleton instance
-_validator = None
-
-
-def get_schema_validator() -> SchemaValidator:
-    """Get singleton validator instance."""
-    global _validator
-    if _validator is None:
-        _validator = SchemaValidator()
-    return _validator
+    return msg.strip()

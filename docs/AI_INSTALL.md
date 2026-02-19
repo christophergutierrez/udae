@@ -712,15 +712,11 @@ mkdir -p cube_project/schema
 # Create symlinks to Cube.js schemas
 ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
 
-# Create symlink to database schema documentation
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/
-
 # Verify symlinks were created
 ls -la cube_project/schema/
 # Should show:
 #   Actor.js -> /path/to/schemas/Actor.js
 #   Customer.js -> /path/to/schemas/Customer.js
-#   DATABASE_SCHEMA.md -> /path/to/docs/DATABASE_SCHEMA.md
 #   (and all other .js schema files)
 ```
 
@@ -896,7 +892,7 @@ echo "✅ Text-to-query service stopped"
 **Purpose**: Expose UDAE's natural language query capabilities as MCP tools for use with Claude Code and other AI agents.
 
 **Prerequisites**:
-- PHASE 11.0 symlinks must be complete (MCP server reads `cube_project/schema/DATABASE_SCHEMA.md` at startup)
+- PHASE 11.0 symlinks must be complete (Cube.js schema `.js` files must be symlinked into `cube_project/schema/`)
 - Cube.js must be running (MCP tools make live requests to it)
 - `mcp>=1.0.0` is already included in `requirements.txt`
 
@@ -925,13 +921,6 @@ python3 -c "from mcp_server.server import mcp; print('✅ MCP server imports OK'
 ```
 
 **Expected output**: `✅ MCP server imports OK`
-
-**If this fails with `FileNotFoundError: cube_project/schema/DATABASE_SCHEMA.md`**:
-```bash
-# The schema parser reads this file at import time — create the symlink if missing
-mkdir -p cube_project/schema
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/DATABASE_SCHEMA.md
-```
 
 **If this fails with `ModuleNotFoundError: mcp`**:
 ```bash
@@ -1138,22 +1127,15 @@ curl -s -H "Authorization: Bearer $OPENMETADATA_BOT_TOKEN" \
 #    Table: .* (all tables)
 ```
 
-### ERROR: "FileNotFoundError: cube_project/schema/DATABASE_SCHEMA.md"
+### ERROR: "FileNotFoundError: cube_project/schema/*.js"
 
-**Cause**: Symlinks not created
+**Cause**: Cube.js schema symlinks not created
 
 **Fix**:
 ```bash
 cd /path/to/udae-project
-
-# Create directory
 mkdir -p cube_project/schema
-
-# Create symlinks
 ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/
-
-# Verify
 ls -la cube_project/schema/
 ```
 
@@ -1426,10 +1408,9 @@ python3 -m mcp_server
 # Press Ctrl+C to stop
 ```
 
-**Fix — Missing symlink** (`FileNotFoundError: cube_project/schema/DATABASE_SCHEMA.md`):
+**Fix — Missing symlinks**:
 ```bash
 mkdir -p cube_project/schema
-ln -sf "$(pwd)/docs/DATABASE_SCHEMA.md" cube_project/schema/DATABASE_SCHEMA.md
 ln -sf "$(pwd)/schemas"/*.js cube_project/schema/
 ```
 
