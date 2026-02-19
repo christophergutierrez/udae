@@ -72,6 +72,11 @@ class SchemaValidator:
     metadata = await self._cube_metadata.fetch_metadata()
     graph = self._build_join_graph(metadata)
 
+    # Cube.js /meta does not expose join definitions — if graph has no edges,
+    # skip pre-validation and let Cube.js return its own join errors.
+    if not any(graph.values()):
+      return {"valid": True}
+
     invalid_pairs = []
     long_paths = []
 

@@ -247,7 +247,7 @@ class SchemaHealer:
 
     def write_cube_file(self, cube_file: Path, content: str):
         """Write updated content back to a cube file."""
-        cube_file.write_text(content)
+        cube_file.resolve().write_text(content)
         logger.info(f"Updated cube file: {cube_file}")
 
     def heal_schema(self, error_message: str) -> Dict[str, Any]:
@@ -269,7 +269,6 @@ class SchemaHealer:
         """
         result = {"healed": False, "message": "No healing attempted"}
 
-        # Parse the error
         parsed = self.parse_missing_measure_error(error_message)
         if not parsed:
             result["message"] = "Could not parse error message"
@@ -277,11 +276,9 @@ class SchemaHealer:
 
         cube_name = parsed["cube"]
         measure_name = parsed["measure"]
-
         result["cube"] = cube_name
         result["measure"] = measure_name
 
-        # Find the cube file
         cube_file = self.get_cube_file_path(cube_name)
         if not cube_file:
             result["message"] = f"Cube file not found: {cube_name}.js"
@@ -289,20 +286,17 @@ class SchemaHealer:
 
         result["file_path"] = str(cube_file)
 
-        # Read current content
         try:
             content = self.read_cube_file(cube_file)
         except Exception as e:
             result["message"] = f"Error reading cube file: {str(e)}"
             return result
 
-        # Add the measure
         updated_content = self.add_measure_to_cube(content, measure_name)
         if not updated_content:
             result["message"] = f"No auto-heal available for measure: {measure_name}"
             return result
 
-        # Write back
         try:
             self.write_cube_file(cube_file, updated_content)
             result["healed"] = True

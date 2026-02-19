@@ -37,7 +37,7 @@ def get_airflow_token():
         headers={"Content-Type": "application/json"},
         json={"username": "admin", "password": "admin"},
     )
-    if response.status_code == 200:
+    if response.status_code in (200, 201):
         return response.json()["access_token"]
     return None
 
